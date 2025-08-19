@@ -17,7 +17,7 @@ services:
     command: sh -c "npm ci && npm run dev"
     volumes:
       - ./:/app
-      - /path/to/your/vault:/vault:rw
+      - 'C:\Users\maeve\Documents\note vault\test_vault:/vault:rw'
     environment:
       - VAULT_ROOT=/vault
       - HOST=127.0.0.1
