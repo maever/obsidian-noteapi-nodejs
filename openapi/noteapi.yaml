@@ -11,13 +11,60 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    NoteFrontmatter:
+      type: object
+      additionalProperties: true
+    TOCItem:
+      type: object
+      properties:
+        level:
+          type: integer
+        title:
+          type: string
+      required: [level, title]
+    NoteResponse:
+      type: object
+      properties:
+        path:
+          type: string
+        frontmatter:
+          $ref: '#/components/schemas/NoteFrontmatter'
+        content:
+          type: string
+        etag:
+          type: string
+        toc:
+          type: array
+          items:
+            $ref: '#/components/schemas/TOCItem'
+      required: [path, frontmatter, content, etag]
+    SearchResponse:
+      type: object
+      properties:
+        hits:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              title:
+                type: string
+              snippet:
+                type: string
+              score:
+                type: number
+            required: [path, title, snippet]
+      required: [hits]
 paths:
   /health:
     get:
       operationId: health
       summary: Health check
+      security: []
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
@@ -26,32 +73,209 @@ paths:
                 properties:
                   ok:
                     type: boolean
-  /search:
-    get:
-      operationId: searchNotes
-      summary: Full-text search
-      parameters:
-        - in: query
-          name: q
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: limit
-          schema:
-            type: integer
-            default: 10
-            minimum: 1
-            maximum: 50
+                required: [ok]
+  /notes:
+    post:
+      operationId: createNote
+      summary: Create note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                frontmatter:
+                  $ref: '#/components/schemas/NoteFrontmatter'
+                content:
+                  type: string
+              required: [path]
       responses:
-        "200":
-          description: Results
+        '201':
+          description: Created
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  hits:
-                    type: array
-        "201":
+                  ok:
+                    type: boolean
+                required: [ok]
+  /notes/{path}:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getNote
+      summary: Read note
+      parameters:
+        - name: section
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Note
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+    patch:
+      operationId: updateNote
+      summary: Update note
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                frontmatter:
+                  $ref: '#/components/schemas/NoteFrontmatter'
+                content:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+    delete:
+      operationId: deleteNote
+      summary: Delete note
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+  /notes/{path}/move:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: moveNote
+      summary: Move note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newPath:
+                  type: string
+              required: [newPath]
+      responses:
+        '200':
+          description: Moved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+  /folders:
+    get:
+      operationId: listFolders
+      summary: List folder tree
+      responses:
+        '200':
+          description: Tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      operationId: createFolder
+      summary: Create folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+              required: [path]
+      responses:
+        '200':
           description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+  /search:
+    get:
+      operationId: searchNotes
+      summary: Full-text search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: Results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
