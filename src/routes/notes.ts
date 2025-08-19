@@ -69,8 +69,8 @@ export default async function route(app: FastifyInstance) {
     });
 
 
-    app.post('/notes/*/move', async (req, reply) => {
-        const p = (req.params as any)['*'];
+    app.post('/notes/:path/move', async (req, reply) => {
+        const p = (req.params as any).path;
         const { newPath } = req.body as any;
         const from = vaultResolve(p);
         const to = vaultResolve(newPath);
