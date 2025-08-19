@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  meili:
+    image: getmeili/meilisearch:v1.11
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
+    volumes:
+      - ./meili_data:/meili_data
+    ports:
+      - "127.0.0.1:7700:7700"
+
+  noteapi:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev"
+    volumes:
+      - ./:/app
+      - '/root/vault:/vault:rw'
+    environment:
+      - VAULT_ROOT=/vault
+      - HOST=0.0.0.0
+      - PORT=3000
+      - NOTEAPI_KEY=${NOTEAPI_KEY}
+      - MEILI_HOST=http://meili:7700
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_INDEX=notes
+      - BASE_URL=${BASE_URL}
+    depends_on:
+      - meili
+    ports:
+      - "127.0.0.1:3000:3000"
