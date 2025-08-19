@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 
 
@@ -20,6 +21,10 @@ if (!fs.existsSync(CONFIG.vaultRoot)) {
     console.warn(`[WARN] VAULT_ROOT does not exist: ${CONFIG.vaultRoot}`);
 }
 
+const REAL_VAULT_ROOT = fs.existsSync(CONFIG.vaultRoot)
+    ? fs.realpathSync(CONFIG.vaultRoot)
+    : path.resolve(CONFIG.vaultRoot);
+
 
 export function isMarkdown(path: string): boolean {
   return path.toLowerCase().endsWith('.md');
@@ -28,10 +33,15 @@ export function isMarkdown(path: string): boolean {
 
 export function vaultResolve(rel: string): string {
   // Normalize and join with vault root
-  const abs = path.resolve(CONFIG.vaultRoot, rel);
-  // Ensure the resolved path is still within the vault root
-  if (!abs.startsWith(path.resolve(CONFIG.vaultRoot + path.sep))) {
+  const abs = path.resolve(REAL_VAULT_ROOT, rel);
+  // Resolve symlinks and ensure path stays within vault root
+  const real = fs.realpathSync(abs);
+  if (!real.startsWith(REAL_VAULT_ROOT + path.sep) && real !== REAL_VAULT_ROOT) {
     throw new Error('Path traversal detected');
   }
-  return abs;
+  return real;
+}
+
+export async function ensureParentDir(absPath: string): Promise<void> {
+  await fsp.mkdir(path.dirname(absPath), { recursive: true });
 }
