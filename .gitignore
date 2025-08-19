@@ -1,0 +1,12 @@
+# node
+node_modules/
+dist/
+.nyc_output/
+coverage/
+
+# env
+.env
+
+# editor
+.vscode/
+.idea/
