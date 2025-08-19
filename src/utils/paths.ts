@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
 
 export const CONFIG = {
@@ -17,4 +18,20 @@ export const CONFIG = {
 
 if (!fs.existsSync(CONFIG.vaultRoot)) {
     console.warn(`[WARN] VAULT_ROOT does not exist: ${CONFIG.vaultRoot}`);
+}
+
+
+export function isMarkdown(path: string): boolean {
+  return path.toLowerCase().endsWith('.md');
+}
+
+
+export function vaultResolve(rel: string): string {
+  // Normalize and join with vault root
+  const abs = path.resolve(CONFIG.vaultRoot, rel);
+  // Ensure the resolved path is still within the vault root
+  if (!abs.startsWith(path.resolve(CONFIG.vaultRoot + path.sep))) {
+    throw new Error('Path traversal detected');
+  }
+  return abs;
 }
