@@ -5,6 +5,7 @@ import path from 'node:path';
 import { vaultResolve, isMarkdown, ensureParentDir } from '../utils/paths.js';
 import matter from 'gray-matter';
 import { strongEtagFromBuffer } from '../utils/etag.js';
+import { index, toSearchDoc, encodePath } from '../search/meili.js';
 
 async function writeNoteAtomic(absPath: string, buffer: Buffer) {
     const tmp = absPath + '.__tmp';
@@ -68,6 +69,8 @@ export default async function route(app: FastifyInstance) {
         const file = Buffer.from(matter.stringify(content, frontmatter));
         await ensureParentDir(abs);
         await writeNoteAtomic(abs, file);
+        const stats = await fs.stat(abs);
+        await index.addDocuments([toSearchDoc({ path: rel, frontmatter, content, mtime: stats.mtimeMs })]);
         reply.code(201).send({ ok: true });
     });
 
@@ -95,7 +98,13 @@ export default async function route(app: FastifyInstance) {
         }
         const newBuf = Buffer.from(matter.stringify(content, fm));
         await writeNoteAtomic(destAbs, newBuf);
-        if (destAbs !== abs) await fs.unlink(abs);
+        const stats = await fs.stat(destAbs);
+        const relPath = newRel ?? p;
+        await index.addDocuments([toSearchDoc({ path: relPath, frontmatter: fm, content, mtime: stats.mtimeMs })]);
+        if (destAbs !== abs) {
+            await fs.unlink(abs);
+            await index.deleteDocument(encodePath(p));
+        }
         reply.header('ETag', strongEtagFromBuffer(newBuf));
         return { ok: true };
     });
@@ -117,6 +126,7 @@ export default async function route(app: FastifyInstance) {
         } else {
             await fs.unlink(abs);
         }
+        await index.deleteDocument(encodePath(p));
         return { ok: true };
     });
 }
