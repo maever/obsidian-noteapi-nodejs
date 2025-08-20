@@ -3,6 +3,15 @@ import { index, decodePath } from '../search/meili.js';
 
 
 export default async function route(app: FastifyInstance) {
+    // Auth guard (simple API key)
+    app.addHook('onRequest', async (req, reply) => {
+        const auth = req.headers['authorization'];
+        const key = (auth ?? '').toString().replace(/^Bearer\s+/i, '');
+        if (!key || key !== process.env.NOTEAPI_KEY) {
+            reply.code(401).send({ error: 'Unauthorized' });
+        }
+    });
+
     app.get('/search', {
         schema: {
             querystring: {
