@@ -11,6 +11,7 @@ import notes from './routes/notes.js';
 import folders from './routes/folders.js';
 import search from './routes/search.js';
 import admin from './routes/admin.js';
+import { reindexAll } from './search/indexer.js';
 
 const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
@@ -30,6 +31,13 @@ await app.register(notes);
 await app.register(folders);
 await app.register(search);
 await app.register(admin);
+
+try {
+    const count = await reindexAll();
+    app.log.info(`Indexed ${count} notes`);
+} catch (err) {
+    app.log.error({ err }, 'Failed to build search index');
+}
 
 app.listen({ host: CONFIG.host, port: CONFIG.port })
     .then(() => {
