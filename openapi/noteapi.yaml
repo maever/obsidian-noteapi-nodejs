@@ -285,3 +285,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/SearchResponse'
 
+  /graph/backlinks/{path}:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getBacklinks
+      summary: List backlinks to a note
+      responses:
+        '200':
+          description: Backlinks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backlinks:
+                    type: array
+                    items:
+                      type: string
+                required: [backlinks]
+
+  /graph/neighbors/{path}:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getNeighbors
+      summary: List neighbors of a note
+      responses:
+        '200':
+          description: Neighbors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  neighbors:
+                    type: array
+                    items:
+                      type: string
+                required: [neighbors]
+
+  /graph/aliases/{path}:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getAliases
+      summary: List aliases for a note
+      responses:
+        '200':
+          description: Aliases
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  aliases:
+                    type: array
+                    items:
+                      type: string
+                required: [aliases]
+
