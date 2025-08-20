@@ -26,6 +26,29 @@ You are an assistant developer. Your job is to implement endpoints and utilities
 - Validate that interactions with meilisearch follows best practices, functions and parameters in line with versions 1.11 (to avoid deprecation / bad code issues) 
 
 
+## Tests
+- Run a curl GET heartbeat test on `/health` → should return `{"ok":true}`
+- Run a curl GET test on `/openapi.json` → should return valid JSON that contains at least `/search` and `/notes`
+- Run a curl GET on `/notes/<path>` without Authorization header → should return 401/403 (auth enforced)
+- Run a curl POST on `/notes` with path/frontmatter/content → should create note, return 201 with etag
+- Run a curl GET on `/notes/<path>` → should return frontmatter, content, toc[], etag
+- Run a curl GET on `/notes/<path>?section=<heading>` → should only return the requested section
+- Run a curl PATCH on `/notes/<path>` with If-Match header and updated content → should return 200 with new etag
+- Run a curl DELETE on `/notes/<path>` with If-Match header → should return 204 and remove/move file
+- Run a curl PATCH on `/notes/<path>` with an old or invalid If-Match → should return 412 Precondition Failed
+- Run a curl POST on `/folders` with path → should create directory, return 201
+- Run a curl GET on `/folders` → should list folders including newly created one
+- Run a curl GET on `/search?q=banana` → should yield at least one hit with `<em>banana</em>` in snippet
+- Run a curl GET on `/search?q=doesnotexist` → should return 200 with empty hits array
+- Run a curl POST on `/admin/reindex` without Authorization → should return 401/403
+- Run a curl POST on `/admin/reindex` with Authorization → should return counts > 0
+- Run a curl GET on `/search?q=banana` after reindex → should still yield hits
+- Attempt to create a note with `../escape.md` path → should return 400/403 (path traversal blocked)
+- Attempt to create a note in nested dirs (`a/b/c/note.md`) without pre-creating folders → should succeed
+- Create a large note (~1 MB) and run GET/SEARCH → should succeed within reasonable time
+- Create a note with only frontmatter (empty body) → should read back with empty content safely
+
+
 ## Endpoints (MVP)
 - `GET /health` → `{ ok: true }`
 - `GET /notes/{path}?heading=...&range=START-END` → `{ frontmatter, content, outline }` + `ETag` header
