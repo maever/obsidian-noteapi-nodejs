@@ -22,7 +22,8 @@ You are an assistant developer. Your job is to implement endpoints and utilities
 - Return `ETag` on successful `GET`/`PUT`.
 - Always normalize and validate paths (use `utils/paths.ts`).
 - Keep pure functions testable. No side effects in helpers.
-- Copy docker-compose.yml.example to docker-compose.yml while testing 
+- Copy docker-compose.yml.example to docker-compose.yml while testing (do not commit)
+- Validate that interactions with meilisearch follows best practices, functions and parameters in line with versions 1.11 (to avoid deprecation / bad code issues) 
 
 
 ## Endpoints (MVP)
