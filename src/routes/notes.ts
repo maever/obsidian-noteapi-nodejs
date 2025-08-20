@@ -31,7 +31,17 @@ export default async function route(app: FastifyInstance) {
     });
 
 
-    app.get('/notes/*', async (req, reply) => {
+    app.get('/notes/*', {
+        schema: {
+            querystring: {
+                type: 'object',
+                properties: {
+                    section: { type: 'string' },
+                    range: { type: 'string', pattern: '^\\d+-\\d+$' }
+                }
+            }
+        }
+    }, async (req, reply) => {
         const p = (req.params as any)['*'];
         const abs = vaultResolve(p);
         if (!isMarkdown(abs)) return reply.code(400).send({ error: 'Not a Markdown path' });
@@ -48,15 +58,31 @@ export default async function route(app: FastifyInstance) {
         });
         const toc = headings.map(h => ({ level: h.level, title: h.title }));
 
-        const section = (req.query as any).section as string | undefined;
-        let content = parsed.content;
+        const { section, range } = req.query as { section?: string; range?: string };
+        let contentLines = lines;
+
         if (section) {
             const idx = headings.findIndex(h => h.title === section);
             if (idx === -1) return reply.code(404).send({ error: 'Section not found', toc });
             const start = headings[idx].line + 1;
             const end = idx + 1 < headings.length ? headings[idx + 1].line : lines.length;
-            content = lines.slice(start, end).join('\n').trim();
+            contentLines = lines.slice(start, end);
         }
+
+        if (range) {
+            const m = /^(\d+)-(\d+)$/.exec(range);
+            if (!m) return reply.code(400).send({ error: 'Invalid range', toc });
+            const start = parseInt(m[1], 10) - 1;
+            const end = parseInt(m[2], 10);
+            if (start < 0 || start >= end || end > contentLines.length) {
+                return reply.code(400).send({ error: 'Invalid range', toc });
+            }
+            contentLines = contentLines.slice(start, end);
+        }
+
+        let content = contentLines.join('\n');
+        if (section && !range) content = content.trim();
+
         return { frontmatter: parsed.data ?? {}, content, toc };
     });
 
