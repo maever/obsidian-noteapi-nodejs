@@ -63,7 +63,12 @@ export default async function route(app: FastifyInstance) {
 
     app.post('/notes', async (req, reply) => {
         const { path: rel, frontmatter = {}, content = '' } = req.body as any;
-        const abs = vaultResolve(rel);
+        let abs: string;
+        try {
+            abs = vaultResolve(rel);
+        } catch {
+            return reply.code(400).send({ error: 'Invalid path' });
+        }
         if (!isMarkdown(abs)) return reply.code(400).send({ error: 'Not a Markdown path' });
         if (fssync.existsSync(abs)) return reply.code(409).send({ error: 'Exists' });
         const file = Buffer.from(matter.stringify(content, frontmatter));
@@ -71,7 +76,7 @@ export default async function route(app: FastifyInstance) {
         await writeNoteAtomic(abs, file);
         const stats = await fs.stat(abs);
         await index.addDocuments([toSearchDoc({ path: rel, frontmatter, content, mtime: stats.mtimeMs })]);
-        reply.code(201).send({ ok: true });
+        reply.code(201).header('ETag', strongEtagFromBuffer(file)).send({ ok: true });
     });
 
 
@@ -127,6 +132,6 @@ export default async function route(app: FastifyInstance) {
             await fs.unlink(abs);
         }
         await index.deleteDocument(encodePath(p));
-        return { ok: true };
+        reply.code(204).send();
     });
 }
