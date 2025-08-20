@@ -27,8 +27,9 @@ async function waitForMeili() {
     throw new Error('Meilisearch failed to start');
 }
 
+await ensureMeili();
+
 test('POST /notes/{path}/move moves note', async () => {
-    await ensureMeili();
     const meili = spawn('./meilisearch', ['--no-analytics', '--master-key', 'masterKey', '--http-addr', '127.0.0.1:7701'], { stdio: 'inherit' });
     await waitForMeili();
 
@@ -69,6 +70,45 @@ test('POST /notes/{path}/move moves note', async () => {
         });
         assert.equal(newRes.statusCode, 200);
         assert.equal(newRes.json().content.trim(), 'hello');
+    } finally {
+        await app.close();
+        meili.kill();
+        await fs.rm(vault, { recursive: true, force: true });
+    }
+});
+
+test('GET /notes/{path}?range returns specified lines', async () => {
+    const meili = spawn('./meilisearch', ['--no-analytics', '--master-key', 'masterKey', '--http-addr', '127.0.0.1:7701'], { stdio: 'inherit' });
+    await waitForMeili();
+
+    const vault = await fs.mkdtemp(path.join(process.cwd(), 'vault-'));
+    process.env.VAULT_ROOT = vault;
+    process.env.NOTEAPI_KEY = 'testkey';
+    process.env.MEILI_MASTER_KEY = 'masterKey';
+    process.env.MEILI_HOST = MEILI_URL;
+    process.env.MEILI_INDEX = 'notes';
+
+    const notesRoute = (await import('../dist/routes/notes.js')).default;
+    const app = Fastify();
+    await notesRoute(app);
+
+    try {
+        const content = ['one', 'two', 'three', 'four', 'five'].join('\n');
+        const create = await app.inject({
+            method: 'POST',
+            url: '/notes',
+            headers: { authorization: 'Bearer testkey' },
+            payload: { path: 'range.md', content }
+        });
+        assert.equal(create.statusCode, 201);
+
+        const res = await app.inject({
+            method: 'GET',
+            url: '/notes/range.md?range=2-4',
+            headers: { authorization: 'Bearer testkey' }
+        });
+        assert.equal(res.statusCode, 200);
+        assert.equal(res.json().content, ['two', 'three', 'four'].join('\n'));
     } finally {
         await app.close();
         meili.kill();

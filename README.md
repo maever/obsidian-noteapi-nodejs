@@ -9,6 +9,7 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 - Move/rename and folder ops
 - Full‑text search with highlighted snippets (Meilisearch)
 - Section/outline reads to keep LLM context small
+- Line range reads via `?range=start-end`
 - OpenAPI 3.1 for ChatGPT Actions
 - Simple API key auth via `Authorization: Bearer <key>`
 - Works behind Nginx Proxy Manager (NPM)
