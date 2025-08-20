@@ -6,17 +6,19 @@ export const meili = new MeiliSearch({ host: CONFIG.meili.host, apiKey: CONFIG.m
 
 async function ensureIndex() {
     try {
-        await meili.createIndex(CONFIG.meili.index, { primaryKey: 'path' });
+        const task = await meili.createIndex(CONFIG.meili.index, { primaryKey: 'path' });
+        if ('taskUid' in task) await meili.tasks.waitForTask(task.taskUid);
     } catch (err: any) {
         // ignore if index already exists
     }
     const idx = meili.index(CONFIG.meili.index);
     try {
-        await idx.updateSettings({
+        const task = await idx.updateSettings({
             searchableAttributes: ['title', 'headings', 'content', 'path'],
             displayedAttributes: ['path', 'title', 'headings', 'frontmatter', 'content'],
             filterableAttributes: ['path']
         });
+        if ('taskUid' in task) await idx.tasks.waitForTask(task.taskUid);
     } catch {
         // ignore unsupported settings
     }

@@ -23,12 +23,12 @@ You are an assistant developer. Your job is to implement endpoints and utilities
 - Always normalize and validate paths (use `utils/paths.ts`).
 - Keep pure functions testable. No side effects in helpers.
 - Copy docker-compose.yml.example to docker-compose.yml while testing (do not commit)
-- Validate that interactions with meilisearch follows best practices, functions and parameters in line with versions 1.11.3 (to avoid deprecation / bad code issues) 
+- Validate that interactions with Meilisearch follow best practices and remain compatible with the current server version.
 
 ## Test instructions
 
-- Do not use docker for tests 
-- Use meilisearch version 1.11.3 if possible https://github.com/meilisearch/meilisearch/releases/tag/v1.11.3
+- Do not use docker for tests
+- Use the latest stable Meilisearch release (currently 1.18.0) if possible https://github.com/meilisearch/meilisearch/releases/tag/v1.18.0
 
 ## Tests
 - Do not use Docker for tests 
