@@ -16,6 +16,7 @@
     "gray-matter": "^4.0.3",
     "mdast-util-to-string": "^4.0.0",
     "meilisearch": "^0.52.0",
+    "chokidar": "^3.6.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
     "yaml": "^2.5.1"
