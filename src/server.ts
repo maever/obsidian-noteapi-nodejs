@@ -12,6 +12,7 @@ import folders from './routes/folders.js';
 import search from './routes/search.js';
 import admin from './routes/admin.js';
 import { reindexAll } from './search/indexer.js';
+import { startWatcher } from './routes/watcher.js';
 
 const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
@@ -38,6 +39,11 @@ try {
 } catch (err) {
     app.log.error({ err }, 'Failed to build search index');
 }
+
+const watcher = startWatcher();
+app.addHook('onClose', async () => {
+    await watcher.close();
+});
 
 app.listen({ host: CONFIG.host, port: CONFIG.port })
     .then(() => {
