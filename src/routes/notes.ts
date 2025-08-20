@@ -93,24 +93,42 @@ export default async function route(app: FastifyInstance) {
         const body = req.body as any;
         const fm = body.frontmatter ?? parsed.data;
         const content = typeof body.content === 'string' ? body.content : parsed.content;
-        let destAbs = abs;
-        const newRel = body.path as string | undefined;
-        if (newRel && newRel !== p) {
-            destAbs = vaultResolve(newRel);
-            if (!isMarkdown(destAbs)) return reply.code(400).send({ error: 'Not a Markdown path' });
-            if (fssync.existsSync(destAbs)) return reply.code(409).send({ error: 'Exists' });
-            await ensureParentDir(destAbs);
-        }
         const newBuf = Buffer.from(matter.stringify(content, fm));
-        await writeNoteAtomic(destAbs, newBuf);
-        const stats = await fs.stat(destAbs);
-        const relPath = newRel ?? p;
-        await index.addDocuments([toSearchDoc({ path: relPath, frontmatter: fm, content, mtime: stats.mtimeMs })]);
-        if (destAbs !== abs) {
-            await fs.unlink(abs);
-            await index.deleteDocument(encodePath(p));
-        }
+        await writeNoteAtomic(abs, newBuf);
+        const stats = await fs.stat(abs);
+        await index.addDocuments([toSearchDoc({ path: p, frontmatter: fm, content, mtime: stats.mtimeMs })]);
         reply.header('ETag', strongEtagFromBuffer(newBuf));
+        return { ok: true };
+    });
+
+    app.post('/notes/*', async (req, reply) => {
+        const star = (req.params as any)['*'];
+        if (!star.endsWith('/move')) return reply.code(404).send();
+        const p = star.slice(0, -5);
+        const abs = vaultResolve(p);
+        const { newPath } = req.body as any;
+        if (typeof newPath !== 'string') return reply.code(400).send({ error: 'Invalid newPath' });
+        let destAbs: string;
+        try {
+            destAbs = vaultResolve(newPath);
+        } catch {
+            return reply.code(400).send({ error: 'Invalid newPath' });
+        }
+        if (!isMarkdown(destAbs)) return reply.code(400).send({ error: 'Not a Markdown path' });
+        if (fssync.existsSync(destAbs)) return reply.code(409).send({ error: 'Exists' });
+        await ensureParentDir(destAbs);
+        let buf: Buffer;
+        try {
+            buf = await fs.readFile(abs);
+        } catch {
+            return reply.code(404).send({ error: 'Not found' });
+        }
+        await fs.rename(abs, destAbs);
+        const parsed = matter(buf.toString('utf8'));
+        const stats = await fs.stat(destAbs);
+        await index.addDocuments([toSearchDoc({ path: newPath, frontmatter: parsed.data ?? {}, content: parsed.content, mtime: stats.mtimeMs })]);
+        await index.deleteDocument(encodePath(p));
+        reply.header('ETag', strongEtagFromBuffer(buf));
         return { ok: true };
     });
 
