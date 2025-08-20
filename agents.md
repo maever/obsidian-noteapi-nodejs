@@ -23,10 +23,15 @@ You are an assistant developer. Your job is to implement endpoints and utilities
 - Always normalize and validate paths (use `utils/paths.ts`).
 - Keep pure functions testable. No side effects in helpers.
 - Copy docker-compose.yml.example to docker-compose.yml while testing (do not commit)
-- Validate that interactions with meilisearch follows best practices, functions and parameters in line with versions 1.11 (to avoid deprecation / bad code issues) 
+- Validate that interactions with meilisearch follows best practices, functions and parameters in line with versions 1.11.3 (to avoid deprecation / bad code issues) 
 
+## Test instructions
+
+- Do not use docker for tests 
+- Use meilisearch version 1.11.3 if possible https://github.com/meilisearch/meilisearch/releases/tag/v1.11.3
 
 ## Tests
+- Do not use Docker for tests 
 - Run a curl GET heartbeat test on `/health` → should return `{"ok":true}`
 - Run a curl GET test on `/openapi.json` → should return valid JSON that contains at least `/search` and `/notes`
 - Run a curl GET on `/notes/<path>` without Authorization header → should return 401/403 (auth enforced)
