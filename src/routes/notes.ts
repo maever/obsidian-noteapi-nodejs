@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import fssync from 'node:fs';
 import path from 'node:path';
 import { vaultResolve, isMarkdown, ensureParentDir } from '../utils/paths.js';
+import { CONFIG } from '../config.js';
 import matter from 'gray-matter';
 import { strongEtagFromBuffer } from '../utils/etag.js';
 import { index, toSearchDoc, encodePath } from '../search/meili.js';
@@ -25,7 +26,7 @@ export default async function route(app: FastifyInstance) {
     app.addHook('onRequest', async (req, reply) => {
         const auth = req.headers['authorization'];
         const key = (auth ?? '').toString().replace(/^Bearer\s+/i, '');
-        if (!key || key !== process.env.NOTEAPI_KEY) {
+        if (!key || key !== CONFIG.apiKey) {
             reply.code(401).send({ error: 'Unauthorized' });
         }
     });
@@ -167,7 +168,7 @@ export default async function route(app: FastifyInstance) {
         const cur = await fs.readFile(abs);
         const curTag = strongEtagFromBuffer(cur);
         if (ifMatch !== curTag) return reply.code(412).send({ error: 'ETag mismatch' });
-        if (process.env.TRASH_ENABLED === 'true') {
+        if (CONFIG.trashEnabled) {
             const trashRel = path.join('.trash', new Date().toISOString(), p);
             const trashAbs = vaultResolve(trashRel);
             await ensureParentDir(trashAbs);
