@@ -34,8 +34,18 @@ export function isMarkdown(path: string): boolean {
 export function vaultResolve(rel: string): string {
   // Normalize and join with vault root
   const abs = path.resolve(REAL_VAULT_ROOT, rel);
-  // Resolve symlinks and ensure path stays within vault root
-  const real = fs.realpathSync(abs);
+  // Resolve symlinks if the path exists; for new paths fall back to the
+  // computed absolute path so we can create files in yet-to-exist folders.
+  let real: string;
+  try {
+    real = fs.realpathSync(abs);
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') {
+      real = abs;
+    } else {
+      throw err;
+    }
+  }
   if (!real.startsWith(REAL_VAULT_ROOT + path.sep) && real !== REAL_VAULT_ROOT) {
     throw new Error('Path traversal detected');
   }

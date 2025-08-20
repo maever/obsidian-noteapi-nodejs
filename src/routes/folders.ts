@@ -27,10 +27,10 @@ export default async function route(app: FastifyInstance) {
     });
 
 
-    app.post('/folders', async (req) => {
+    app.post('/folders', async (req, reply) => {
         const { path: rel } = req.body as any;
         const abs = path.join(CONFIG.vaultRoot, rel);
         await fs.mkdir(abs, { recursive: true });
-        return { ok: true };
+        reply.code(201).send({ ok: true });
     });
 }

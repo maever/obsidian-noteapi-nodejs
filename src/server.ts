@@ -17,7 +17,7 @@ const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
 );
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 await app.register(helmet);
 await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
 
