@@ -14,11 +14,9 @@ async function ensureIndex() {
     try {
         await idx.updateSettings({
             searchableAttributes: ['title', 'headings', 'content', 'path'],
-            displayedAttributes: ['path', 'title', 'headings', 'frontmatter'],
-            filterableAttributes: ['path'],
-            attributesToHighlight: ['content'],
-            attributesToSnippet: ['content:60']
-        } as any);
+            displayedAttributes: ['path', 'title', 'headings', 'frontmatter', 'content'],
+            filterableAttributes: ['path']
+        });
     } catch {
         // ignore unsupported settings
     }

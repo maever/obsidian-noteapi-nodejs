@@ -16,7 +16,12 @@ export default async function route(app: FastifyInstance) {
         }
     }, async (req) => {
         const { q, limit } = req.query as { q: string; limit?: number };
-        const res = await index.search(q, { limit });
+        const res = await index.search(q, {
+            limit,
+            attributesToHighlight: ['content'],
+            attributesToCrop: ['content'],
+            cropLength: 60
+        });
         return {
             hits: res.hits.map((h: any) => {
                 let snippet: string | undefined = h._formatted?.content;
