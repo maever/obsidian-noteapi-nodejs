@@ -15,6 +15,7 @@ import graph from './routes/graph.js';
 import exporter from './routes/export.js';
 import { reindexAll } from './search/indexer.js';
 import { startWatcher } from './routes/watcher.js';
+import { searchEnabled } from './search/meili.js';
 
 const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
@@ -39,7 +40,11 @@ await app.register(exporter);
 
 try {
     const count = await reindexAll();
-    app.log.info(`Indexed ${count} notes`);
+    if (searchEnabled) {
+        app.log.info(`Indexed ${count} notes`);
+    } else {
+        app.log.warn('Search index unavailable; skipping indexing');
+    }
 } catch (err) {
     app.log.error({ err }, 'Failed to build search index');
 }

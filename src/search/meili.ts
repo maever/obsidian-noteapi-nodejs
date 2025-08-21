@@ -5,13 +5,13 @@ import path from 'node:path';
 export const meili = new MeiliSearch({ host: CONFIG.meili.host, apiKey: CONFIG.meili.key });
 
 async function ensureIndex() {
+    const idx = meili.index(CONFIG.meili.index);
     try {
         const task = await meili.createIndex(CONFIG.meili.index, { primaryKey: 'path' });
         if ('taskUid' in task) await meili.tasks.waitForTask(task.taskUid);
-    } catch (err: any) {
-        // ignore if index already exists
+    } catch {
+        // ignore index already exists or network errors
     }
-    const idx = meili.index(CONFIG.meili.index);
     try {
         const task = await idx.updateSettings({
             searchableAttributes: ['title', 'headings', 'content', 'path'],
@@ -22,10 +22,16 @@ async function ensureIndex() {
     } catch {
         // ignore unsupported settings
     }
-    return idx;
+    try {
+        await meili.health();
+        return idx;
+    } catch {
+        return undefined;
+    }
 }
 
 export const index = await ensureIndex();
+export const searchEnabled = !!index;
 
 export function extractTitleAndHeadings(content: string): { title: string; headings: string[] } {
     const lines = content.split(/\r?\n/);

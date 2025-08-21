@@ -3,10 +3,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { CONFIG } from '../config.js';
-import { index, toSearchDoc, encodePath } from '../search/meili.js';
+import { index, toSearchDoc, encodePath, searchEnabled } from '../search/meili.js';
 import { isMarkdown } from '../utils/paths.js';
 
 async function handleAddOrChange(absPath: string) {
+    if (!searchEnabled || !index) return;
     if (!isMarkdown(absPath) || absPath.includes('sync-conflict')) return;
     try {
         const rel = path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
@@ -22,6 +23,7 @@ async function handleAddOrChange(absPath: string) {
 }
 
 async function handleUnlink(absPath: string) {
+    if (!searchEnabled || !index) return;
     if (!isMarkdown(absPath)) return;
     try {
         const rel = path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
@@ -32,6 +34,9 @@ async function handleUnlink(absPath: string) {
 }
 
 export function startWatcher(): FSWatcher {
+    if (!searchEnabled || !index) {
+        return { close: async () => {} } as unknown as FSWatcher;
+    }
     const watcher = chokidar.watch(CONFIG.vaultRoot, {
         ignoreInitial: true,
         ignored: (p: string) => {
