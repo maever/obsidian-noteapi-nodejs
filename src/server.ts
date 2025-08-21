@@ -12,6 +12,7 @@ import folders from './routes/folders.js';
 import search from './routes/search.js';
 import admin from './routes/admin.js';
 import graph from './routes/graph.js';
+import exporter from './routes/export.js';
 import { reindexAll } from './search/indexer.js';
 import { startWatcher } from './routes/watcher.js';
 
@@ -34,6 +35,7 @@ await app.register(folders);
 await app.register(search);
 await app.register(admin);
 await app.register(graph);
+await app.register(exporter);
 
 try {
     const count = await reindexAll();

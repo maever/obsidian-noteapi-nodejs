@@ -4,18 +4,16 @@ import path from 'node:path';
 import { CONFIG } from '../config.js';
 
 
-async function tree(dir: string, base = ''): Promise<any[]> {
-    const out: any[] = [];
+async function listDirs(dir: string, base = ''): Promise<string[]> {
+    const out: string[] = [];
     const entries = await fs.readdir(dir, { withFileTypes: true });
     for (const e of entries) {
         if (e.name.startsWith('.')) continue;
+        if (!e.isDirectory()) continue;
         const rel = path.posix.join(base, e.name);
         const abs = path.join(dir, e.name);
-        if (e.isDirectory()) {
-            out.push({ type: 'dir', path: rel, children: await tree(abs, rel) });
-        } else {
-            out.push({ type: 'file', path: rel });
-        }
+        out.push(rel);
+        out.push(...await listDirs(abs, rel));
     }
     return out;
 }
@@ -32,7 +30,7 @@ export default async function route(app: FastifyInstance) {
     });
 
     app.get('/folders', async () => {
-        return await tree(CONFIG.vaultRoot, '');
+        return await listDirs(CONFIG.vaultRoot, '');
     });
 
 

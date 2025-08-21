@@ -21,3 +21,12 @@ test('GET /folders without auth should be unauthorized', async () => {
     assert.strictEqual(res.statusCode, 401);
     await app.close();
 });
+
+test('GET /export without auth should be unauthorized', async () => {
+    const exportRoute = (await import('../dist/routes/export.js')).default;
+    const app = Fastify();
+    await exportRoute(app);
+    const res = await app.inject({ method: 'GET', url: '/export' });
+    assert.strictEqual(res.statusCode, 401);
+    await app.close();
+});
