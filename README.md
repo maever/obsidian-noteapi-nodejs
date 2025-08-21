@@ -16,18 +16,26 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 - OpenAPI 3.1 for ChatGPT Actions
 - Simple API key auth via `Authorization: Bearer <key>`
 - Works behind Nginx Proxy Manager (NPM)
-
-
-## Roadmap (stubs in code)
+- Safe writes enforced by strong ETags and `If-Match`
 - Graph helpers (backlinks, neighbors, aliases)
-- Templates with variables
-- Safe writes using strong ETags and `If-Match`
-- Roll tables (markdown tables or fenced blocks)
+- Templates with variables and roll tables
 - Indexing watcher to keep search fresh
+
+
+## Roadmap
+- Richer templating features
+- Additional roll-table utilities
 
 
 ## Requirements
 - Node.js ≥ 20
 - Docker & Docker Compose (for Meilisearch)
 - An existing Syncthing share mounted locally as your vault root
+
+## Limitations
+- ChatGPT's Actions integration is optimized for very light API use; requests that span more than about three files may exceed its current capabilities. This constraint stems from ChatGPT rather than the API itself.
+
+## Quick Start
+1. Rename `docker-compose.yml.example` to `docker-compose.yml`.
+2. Run `docker compose up -d` to launch the stack.
 
