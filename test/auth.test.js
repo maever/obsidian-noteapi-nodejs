@@ -13,6 +13,15 @@ test('GET /search without auth should be unauthorized', async () => {
     await app.close();
 });
 
+test('GET /notes without auth should be unauthorized', async () => {
+    const notesRoute = (await import('../dist/routes/notes.js')).default;
+    const app = Fastify();
+    await notesRoute(app);
+    const res = await app.inject({ method: 'GET', url: '/notes' });
+    assert.strictEqual(res.statusCode, 401);
+    await app.close();
+});
+
 test('GET /folders without auth should be unauthorized', async () => {
     const foldersRoute = (await import('../dist/routes/folders.js')).default;
     const app = Fastify();

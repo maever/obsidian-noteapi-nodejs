@@ -76,6 +76,24 @@ paths:
                     type: boolean
                 required: [ok]
   /notes:
+    get:
+      operationId: listNotes
+      summary: List notes recursively
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          description: Optional folder to list from
+      responses:
+        '200':
+          description: Note paths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
     post:
       operationId: createNote
       summary: Create note

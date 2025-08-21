@@ -20,6 +20,23 @@ async function writeNoteAtomic(absPath: string, buffer: Buffer) {
     await fs.rename(tmp, absPath);
 }
 
+async function listNotes(rel: string): Promise<string[]> {
+    const abs = vaultResolve(rel);
+    const out: string[] = [];
+    const entries = await fs.readdir(abs, { withFileTypes: true });
+    for (const e of entries) {
+        if (e.name.startsWith('.')) continue;
+        const relPath = path.posix.join(rel, e.name);
+        const absPath = path.join(abs, e.name);
+        if (e.isDirectory()) {
+            out.push(...await listNotes(relPath));
+        } else if (isMarkdown(absPath)) {
+            out.push(relPath);
+        }
+    }
+    return out;
+}
+
 
 export default async function route(app: FastifyInstance) {
     // Auth guard (simple API key)
@@ -29,6 +46,26 @@ export default async function route(app: FastifyInstance) {
         if (!key || key !== CONFIG.apiKey) {
             reply.code(401).send({ error: 'Unauthorized' });
         }
+    });
+
+
+    app.get('/notes', {
+        schema: {
+            querystring: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string' }
+                }
+            }
+        }
+    }, async (req, reply) => {
+        const { path: rel = '' } = req.query as any;
+        try {
+            vaultResolve(rel);
+        } catch {
+            return reply.code(400).send({ error: 'Invalid path' });
+        }
+        return await listNotes(rel);
     });
 
 
