@@ -17,11 +17,11 @@ async function waitForMeili() {
     for (let i = 0; i < 50; i++) {
         try {
             const res = await fetch('http://127.0.0.1:7700/health');
-            if (res.ok) return;
+            if (res.ok) return true;
         } catch {}
         await delay(100);
     }
-    throw new Error('Meilisearch failed to start');
+    return false;
 }
 
 async function waitFor(fn) {
@@ -34,8 +34,11 @@ async function waitFor(fn) {
 
 test('watcher updates index on note changes', async () => {
     await ensureMeili();
-    const meili = spawn('./meilisearch', ['--no-analytics', '--master-key', 'masterKey'], { stdio: 'inherit' });
-    await waitForMeili();
+    let meili;
+    if (!(await waitForMeili())) {
+        meili = spawn('./meilisearch', ['--no-analytics', '--master-key', 'masterKey'], { stdio: 'inherit' });
+        await waitForMeili();
+    }
 
     const vault = await fs.mkdtemp(path.join(process.cwd(), 'vault-'));
     process.env.VAULT_ROOT = vault;
@@ -61,7 +64,7 @@ test('watcher updates index on note changes', async () => {
         await waitFor(async () => (await index.search('updated')).hits.length === 0);
     } finally {
         await watcher.close();
-        meili.kill();
+        if (meili) meili.kill();
         await fs.rm(vault, { recursive: true, force: true });
     }
 });
