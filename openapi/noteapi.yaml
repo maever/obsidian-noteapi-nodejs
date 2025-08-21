@@ -235,16 +235,16 @@ paths:
   /folders:
     get:
       operationId: listFolders
-      summary: List folder tree
+      summary: List folders recursively
       responses:
         '200':
-          description: Tree
+          description: Folder paths
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
+                  type: string
     post:
       operationId: createFolder
       summary: Create folder
@@ -269,6 +269,32 @@ paths:
                   ok:
                     type: boolean
                 required: [ok]
+  /export:
+    get:
+      operationId: exportNotes
+      summary: Export notes recursively
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          description: Optional folder to export from
+      responses:
+        '200':
+          description: Notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                    frontmatter:
+                      type: object
+                    content:
+                      type: string
   /search:
     get:
       operationId: searchNotes

@@ -7,6 +7,8 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 ## Features (MVP)
 - CRUD on Markdown notes with YAML frontmatter
 - Move/rename and folder ops
+- List folders recursively
+- Export notes recursively
 - Full‑text search with highlighted snippets (Meilisearch)
 - Section/outline reads to keep LLM context small
 - Line range reads via `?range=start-end`

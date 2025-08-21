@@ -47,15 +47,17 @@ test('endpoints integration', async () => {
     process.env.MEILI_HOST = MEILI_URL;
     process.env.MEILI_INDEX = 'notes';
 
-    const notesRoute = (await import('../dist/routes/notes.js')).default;
-    const foldersRoute = (await import('../dist/routes/folders.js')).default;
-    const searchRoute = (await import('../dist/routes/search.js')).default;
-    const adminRoute = (await import('../dist/routes/admin.js')).default;
-    const app = Fastify();
-    await notesRoute(app);
-    await foldersRoute(app);
-    await searchRoute(app);
-    await adminRoute(app);
+  const notesRoute = (await import('../dist/routes/notes.js')).default;
+  const foldersRoute = (await import('../dist/routes/folders.js')).default;
+  const exportRoute = (await import('../dist/routes/export.js')).default;
+  const searchRoute = (await import('../dist/routes/search.js')).default;
+  const adminRoute = (await import('../dist/routes/admin.js')).default;
+  const app = Fastify();
+  await notesRoute(app);
+  await foldersRoute(app);
+  await exportRoute(app);
+  await searchRoute(app);
+  await adminRoute(app);
 
     const auth = { authorization: 'Bearer testkey' };
 
@@ -141,9 +143,20 @@ test('endpoints integration', async () => {
         });
         assert.equal(mkFolder.statusCode, 201);
 
-        const listFolders = await app.inject({ method: 'GET', url: '/folders', headers: auth });
-        assert.equal(listFolders.statusCode, 200);
-        assert(listFolders.json().some((f) => f.type === 'dir' && f.path === 'newdir'));
+         const listFolders = await app.inject({ method: 'GET', url: '/folders', headers: auth });
+         assert.equal(listFolders.statusCode, 200);
+         const folders = listFolders.json();
+         assert(folders.includes('newdir'));
+         assert(folders.includes('a'));
+         assert(folders.includes('a/b'));
+         assert(folders.includes('a/b/c'));
+
+         const expAll = await app.inject({ method: 'GET', url: '/export', headers: auth });
+         assert.equal(expAll.statusCode, 200);
+         assert(expAll.json().some((n) => n.path === 'a/b/c/note.md'));
+
+         const expSub = await app.inject({ method: 'GET', url: '/export?path=a', headers: auth });
+         assert(expSub.json().every((n) => n.path.startsWith('a/')));
 
         // Search
         let searchRes;
