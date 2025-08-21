@@ -14,6 +14,7 @@ components:
   schemas:
     NoteFrontmatter:
       type: object
+      properties: {}
       additionalProperties: true
     TOCItem:
       type: object
@@ -104,16 +105,15 @@ paths:
                     type: boolean
                 required: [ok]
   /notes/{path}:
-    parameters:
-      - name: path
-        in: path
-        required: true
-        schema:
-          type: string
     get:
       operationId: getNote
       summary: Read note
       parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
         - name: section
           in: query
           required: false
@@ -140,6 +140,11 @@ paths:
       operationId: updateNote
       summary: Update note
       parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
         - name: If-Match
           in: header
           required: true
@@ -175,6 +180,11 @@ paths:
       operationId: deleteNote
       summary: Delete note
       parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
         - name: If-Match
           in: header
           required: true
@@ -192,15 +202,15 @@ paths:
                     type: boolean
                 required: [ok]
   /notes/{path}/move:
-    parameters:
-      - name: path
-        in: path
-        required: true
-        schema:
-          type: string
     post:
       operationId: moveNote
       summary: Move note
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -286,15 +296,15 @@ paths:
                 $ref: '#/components/schemas/SearchResponse'
 
   /graph/backlinks/{path}:
-    parameters:
-      - name: path
-        in: path
-        required: true
-        schema:
-          type: string
     get:
       operationId: getBacklinks
       summary: List backlinks to a note
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Backlinks
@@ -310,15 +320,15 @@ paths:
                 required: [backlinks]
 
   /graph/neighbors/{path}:
-    parameters:
-      - name: path
-        in: path
-        required: true
-        schema:
-          type: string
     get:
       operationId: getNeighbors
       summary: List neighbors of a note
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Neighbors
@@ -334,15 +344,15 @@ paths:
                 required: [neighbors]
 
   /graph/aliases/{path}:
-    parameters:
-      - name: path
-        in: path
-        required: true
-        schema:
-          type: string
     get:
       operationId: getAliases
       summary: List aliases for a note
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: Aliases
