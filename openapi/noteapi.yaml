@@ -145,8 +145,8 @@ paths:
           required: true
           schema:
             type: string
-        - name: If-Match
-          in: header
+        - name: ifMatch
+          in: query
           required: true
           schema:
             type: string
@@ -185,8 +185,8 @@ paths:
           required: true
           schema:
             type: string
-        - name: If-Match
-          in: header
+        - name: ifMatch
+          in: query
           required: true
           schema:
             type: string

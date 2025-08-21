@@ -107,10 +107,17 @@ export default async function route(app: FastifyInstance) {
     });
 
 
-    app.patch('/notes/*', async (req, reply) => {
+    app.patch('/notes/*', {
+        schema: {
+            querystring: {
+                type: 'object',
+                properties: { ifMatch: { type: 'string' } }
+            }
+        }
+    }, async (req, reply) => {
         const p = (req.params as any)['*'];
         const abs = vaultResolve(p);
-        const ifMatch = req.headers['if-match'];
+        const ifMatch = (req.headers['if-match'] ?? (req.query as any).ifMatch) as string | undefined;
         if (!ifMatch) return reply.code(412).send({ error: 'Missing If-Match' });
         const cur = await fs.readFile(abs);
         const curTag = strongEtagFromBuffer(cur);
@@ -160,10 +167,17 @@ export default async function route(app: FastifyInstance) {
     });
 
 
-    app.delete('/notes/*', async (req, reply) => {
+    app.delete('/notes/*', {
+        schema: {
+            querystring: {
+                type: 'object',
+                properties: { ifMatch: { type: 'string' } }
+            }
+        }
+    }, async (req, reply) => {
         const p = (req.params as any)['*'];
         const abs = vaultResolve(p);
-        const ifMatch = req.headers['if-match'];
+        const ifMatch = (req.headers['if-match'] ?? (req.query as any).ifMatch) as string | undefined;
         if (!ifMatch) return reply.code(412).send({ error: 'Missing If-Match' });
         const cur = await fs.readFile(abs);
         const curTag = strongEtagFromBuffer(cur);
