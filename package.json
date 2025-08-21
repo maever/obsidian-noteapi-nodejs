@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx src/server.ts",
     "build": "tsc -p .",
-    "pretest": "npm run build",
+    "check:meili": "node scripts/check-meili.js",
+    "pretest": "npm run build && npm run check:meili",
     "start": "node dist/server.js",
     "test": "node --test --test-concurrency=1"
   },
