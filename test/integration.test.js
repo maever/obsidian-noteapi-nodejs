@@ -148,12 +148,19 @@ test('endpoints integration', async () => {
          const folders = listFolders.json();
          assert(folders.includes('newdir'));
          assert(folders.includes('a'));
-         assert(folders.includes('a/b'));
-         assert(folders.includes('a/b/c'));
+        assert(folders.includes('a/b'));
+        assert(folders.includes('a/b/c'));
 
-         const expAll = await app.inject({ method: 'GET', url: '/export', headers: auth });
-         assert.equal(expAll.statusCode, 200);
-         assert(expAll.json().some((n) => n.path === 'a/b/c/note.md'));
+        const listNotes = await app.inject({ method: 'GET', url: '/notes', headers: auth });
+        assert.equal(listNotes.statusCode, 200);
+        assert(listNotes.json().includes('a/b/c/note.md'));
+
+        const listSub = await app.inject({ method: 'GET', url: '/notes?path=a', headers: auth });
+        assert(listSub.json().every((n) => n.startsWith('a/')));
+
+        const expAll = await app.inject({ method: 'GET', url: '/export', headers: auth });
+        assert.equal(expAll.statusCode, 200);
+        assert(expAll.json().some((n) => n.path === 'a/b/c/note.md'));
 
          const expSub = await app.inject({ method: 'GET', url: '/export?path=a', headers: auth });
          assert(expSub.json().every((n) => n.path.startsWith('a/')));
