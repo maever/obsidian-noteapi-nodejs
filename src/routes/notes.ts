@@ -121,7 +121,7 @@ export default async function route(app: FastifyInstance) {
         let content = contentLines.join('\n');
         if (section && !range) content = content.trim();
 
-        return { frontmatter: parsed.data ?? {}, content, toc };
+        return { path: p, frontmatter: parsed.data ?? {}, content, toc, etag };
     });
 
 
