@@ -6,7 +6,7 @@ import { vaultResolve, isMarkdown, ensureParentDir } from '../utils/paths.js';
 import { CONFIG } from '../config.js';
 import matter from 'gray-matter';
 import { strongEtagFromBuffer } from '../utils/etag.js';
-import { index, toSearchDoc, encodePath } from '../search/meili.js';
+import { index, toSearchDoc, encodePath, searchEnabled } from '../search/meili.js';
 
 async function writeNoteAtomic(absPath: string, buffer: Buffer) {
     const tmp = absPath + '.__tmp';
@@ -102,7 +102,9 @@ export default async function route(app: FastifyInstance) {
         await ensureParentDir(abs);
         await writeNoteAtomic(abs, file);
         const stats = await fs.stat(abs);
-        await index.addDocuments([toSearchDoc({ path: rel, frontmatter, content, mtime: stats.mtimeMs })]);
+        if (searchEnabled && index) {
+            await index.addDocuments([toSearchDoc({ path: rel, frontmatter, content, mtime: stats.mtimeMs })]);
+        }
         reply.code(201).header('ETag', strongEtagFromBuffer(file)).send({ ok: true });
     });
 
@@ -130,7 +132,9 @@ export default async function route(app: FastifyInstance) {
         const newBuf = Buffer.from(matter.stringify(content, fm));
         await writeNoteAtomic(abs, newBuf);
         const stats = await fs.stat(abs);
-        await index.addDocuments([toSearchDoc({ path: p, frontmatter: fm, content, mtime: stats.mtimeMs })]);
+        if (searchEnabled && index) {
+            await index.addDocuments([toSearchDoc({ path: p, frontmatter: fm, content, mtime: stats.mtimeMs })]);
+        }
         reply.header('ETag', strongEtagFromBuffer(newBuf));
         return { ok: true };
     });
@@ -160,8 +164,10 @@ export default async function route(app: FastifyInstance) {
         await fs.rename(abs, destAbs);
         const parsed = matter(buf.toString('utf8'));
         const stats = await fs.stat(destAbs);
-        await index.addDocuments([toSearchDoc({ path: newPath, frontmatter: parsed.data ?? {}, content: parsed.content, mtime: stats.mtimeMs })]);
-        await index.deleteDocument(encodePath(p));
+        if (searchEnabled && index) {
+            await index.addDocuments([toSearchDoc({ path: newPath, frontmatter: parsed.data ?? {}, content: parsed.content, mtime: stats.mtimeMs })]);
+            await index.deleteDocument(encodePath(p));
+        }
         reply.header('ETag', strongEtagFromBuffer(buf));
         return { ok: true };
     });
@@ -190,7 +196,9 @@ export default async function route(app: FastifyInstance) {
         } else {
             await fs.unlink(abs);
         }
-        await index.deleteDocument(encodePath(p));
+        if (searchEnabled && index) {
+            await index.deleteDocument(encodePath(p));
+        }
         reply.code(204).send();
     });
 }

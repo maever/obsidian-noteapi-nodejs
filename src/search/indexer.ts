@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { CONFIG } from '../config.js';
-import { index, toSearchDoc } from './meili.js';
+import { index, toSearchDoc, searchEnabled } from './meili.js';
 import { isMarkdown } from '../utils/paths.js';
 
 async function walk(dir: string): Promise<string[]> {
@@ -24,9 +24,10 @@ async function walk(dir: string): Promise<string[]> {
 }
 
 export async function reindexAll(): Promise<number> {
+    if (!searchEnabled || !index) return 0;
     try {
         const absPaths = await walk(CONFIG.vaultRoot);
-        const docs = [] as any[];
+        const docs: any[] = [];
         for (const abs of absPaths) {
             const rel = path.relative(CONFIG.vaultRoot, abs).split(path.sep).join('/');
             const buf = await fs.readFile(abs, 'utf8');
@@ -38,6 +39,7 @@ export async function reindexAll(): Promise<number> {
         return docs.length;
     } catch (err: any) {
         if (err?.code === 'ENOENT') return 0;
+        if (err?.type === 'MeiliSearchRequestError') return 0;
         throw err;
     }
 }
