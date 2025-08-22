@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { index, decodePath, searchEnabled } from '../search/meili.js';
+import { index, decodePath, searchEnabled, ensureIndex } from '../search/meili.js';
 import { CONFIG } from '../config.js';
 
 
@@ -26,8 +26,11 @@ export default async function route(app: FastifyInstance) {
         }
     }, async (req, reply) => {
         if (!searchEnabled || !index) {
-            reply.code(503).send({ error: 'Search index unavailable' });
-            return;
+            await ensureIndex();
+            if (!searchEnabled || !index) {
+                reply.code(503).send({ error: 'Search index unavailable' });
+                return;
+            }
         }
         const { q, limit } = req.query as { q: string; limit?: number };
         const res = await index.search(q, {

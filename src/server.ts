@@ -16,7 +16,7 @@ import graph from './routes/graph.js';
 import exporter from './routes/export.js';
 import { reindexAll } from './search/indexer.js';
 import { startWatcher } from './routes/watcher.js';
-import { searchEnabled } from './search/meili.js';
+import { searchEnabled, ensureIndex } from './search/meili.js';
 
 const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
@@ -53,10 +53,30 @@ try {
     app.log.error({ err }, 'Failed to build search index');
 }
 
-const watcher = startWatcher();
+let watcher = startWatcher();
 app.addHook('onClose', async () => {
     await watcher.close();
 });
+
+if (!searchEnabled) {
+    const timer = setInterval(async () => {
+        const idx = await ensureIndex();
+        if (idx) {
+            clearInterval(timer);
+            try {
+                const count = await reindexAll();
+                if (searchEnabled) {
+                    app.log.info(`Indexed ${count} notes`);
+                } else {
+                    app.log.warn('Search index unavailable; skipping indexing');
+                }
+            } catch (err) {
+                app.log.error({ err }, 'Failed to build search index');
+            }
+            watcher = startWatcher();
+        }
+    }, 10000);
+}
 
 app.listen({ host: CONFIG.host, port: CONFIG.port })
     .then(() => {

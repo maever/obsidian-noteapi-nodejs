@@ -10,7 +10,10 @@ const log = pino({
 
 export const meili = new MeiliSearch({ host: CONFIG.meili.host, apiKey: CONFIG.meili.key });
 
-async function ensureIndex() {
+export let index: ReturnType<typeof meili.index> | undefined;
+export let searchEnabled = false;
+
+export async function ensureIndex() {
     const idx = meili.index(CONFIG.meili.index);
     try {
         const task = await meili.createIndex(CONFIG.meili.index, { primaryKey: 'path' });
@@ -31,15 +34,18 @@ async function ensureIndex() {
     try {
         await meili.health();
         log.info({ host: CONFIG.meili.host }, 'Meilisearch healthy');
+        index = idx;
+        searchEnabled = true;
         return idx;
     } catch (err) {
         log.error({ err }, 'Meilisearch health check failed');
+        index = undefined;
+        searchEnabled = false;
         return undefined;
     }
 }
 
-export const index = await ensureIndex();
-export const searchEnabled = !!index;
+await ensureIndex();
 
 export function extractTitleAndHeadings(content: string): { title: string; headings: string[] } {
     const lines = content.split(/\r?\n/);
