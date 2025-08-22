@@ -40,6 +40,7 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 ### Method 1: Docker Compose
 1. Copy `.env.example` to `.env` and set any required values (e.g. `NOTEAPI_KEY`). The default `MEILI_HOST` is `http://meili:7700`.
 2. Copy `docker-compose.yml.example` to `docker-compose.yml`.
+   These `.env` and `docker-compose.yml` files are local and should not be committed.
 3. Start the stack:
    ```sh
    docker compose up -d
@@ -47,6 +48,7 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 
 ### Method 2: Local CLI
 1. Copy `.env.example` to `.env` and set `MEILI_HOST=http://127.0.0.1:7700`.
+   The `.env` file is local and should not be committed.
 2. Start Meilisearch:
    ```sh
    curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.18.0/meilisearch-linux-amd64 -o meilisearch
