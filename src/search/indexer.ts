@@ -16,6 +16,7 @@ async function walk(dir: string): Promise<string[]> {
         if (e.name.startsWith('.')) continue;
         const abs = path.join(dir, e.name);
         if (e.isDirectory()) {
+            if (e.name === 'assets') continue; // assets contain non-indexable binaries and images
             files.push(...await walk(abs));
         } else if (e.isFile()) {
             if (!isMarkdown(abs)) continue;
