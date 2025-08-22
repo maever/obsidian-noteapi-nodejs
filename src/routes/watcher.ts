@@ -43,6 +43,7 @@ export function startWatcher(): FSWatcher {
             const base = path.basename(p);
             if (base === '.stfolder') return true;
             if (base.startsWith('.')) return true;
+            if (base === 'assets') return true; // assets contain non-indexable binaries and images
             return false;
         }
     });
