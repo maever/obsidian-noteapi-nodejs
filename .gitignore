@@ -9,6 +9,8 @@ data.ms/
 vault-*/
 
 # env
+.env
+docker-compose.yml
 
 # editor
 .vscode/
