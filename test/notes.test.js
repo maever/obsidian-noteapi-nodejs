@@ -116,3 +116,53 @@ test('GET /notes/{path}?range returns specified lines', async () => {
     }
 });
 
+test('POST /notes/batch returns multiple notes', async () => {
+    const meili = spawn('./meilisearch', ['--no-analytics', '--master-key', 'masterKey', '--http-addr', '127.0.0.1:7701'], { stdio: 'inherit' });
+    await waitForMeili();
+
+    const vault = await fs.mkdtemp(path.join(process.cwd(), 'vault-'));
+    process.env.VAULT_ROOT = vault;
+    process.env.NOTEAPI_KEY = 'testkey';
+    process.env.MEILI_MASTER_KEY = 'masterKey';
+    process.env.MEILI_HOST = MEILI_URL;
+    process.env.MEILI_INDEX = 'notes';
+
+    const notesRoute = (await import('../dist/routes/notes.js')).default;
+    const app = Fastify();
+    await notesRoute(app);
+
+    try {
+        const createA = await app.inject({
+            method: 'POST',
+            url: '/notes',
+            headers: { authorization: 'Bearer testkey' },
+            payload: { path: 'a.md', content: 'A' }
+        });
+        assert.equal(createA.statusCode, 201);
+
+        const createB = await app.inject({
+            method: 'POST',
+            url: '/notes',
+            headers: { authorization: 'Bearer testkey' },
+            payload: { path: 'b.md', content: 'B' }
+        });
+        assert.equal(createB.statusCode, 201);
+
+        const batch = await app.inject({
+            method: 'POST',
+            url: '/notes/batch',
+            headers: { authorization: 'Bearer testkey' },
+            payload: { paths: ['a.md', 'b.md'] }
+        });
+        assert.equal(batch.statusCode, 200);
+        const body = batch.json();
+        assert.equal(body.notes.length, 2);
+        const paths = body.notes.map(n => n.path).sort();
+        assert.deepEqual(paths, ['a.md', 'b.md']);
+    } finally {
+        await app.close();
+        meili.kill();
+        await fs.rm(vault, { recursive: true, force: true });
+    }
+});
+

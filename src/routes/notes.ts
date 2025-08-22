@@ -37,6 +37,42 @@ async function listNotes(rel: string): Promise<string[]> {
     return out;
 }
 
+interface ReadNoteResult {
+    path: string;
+    frontmatter: any;
+    lines: string[];
+    headings: { level: number; title: string; line: number }[];
+    toc: { level: number; title: string }[];
+    etag: string;
+}
+
+async function readNote(p: string): Promise<ReadNoteResult> {
+    let abs: string;
+    try {
+        abs = vaultResolve(p);
+    } catch {
+        throw new Error('Invalid path');
+    }
+    if (!isMarkdown(abs)) throw new Error('Not a Markdown path');
+    let buf: Buffer;
+    try {
+        buf = await fs.readFile(abs);
+    } catch (err: any) {
+        if (err?.code === 'ENOENT') throw new Error('Not found');
+        throw err;
+    }
+    const etag = strongEtagFromBuffer(buf);
+    const parsed = matter(buf.toString('utf8'));
+    const lines = parsed.content.split(/\r?\n/);
+    const headings: { level: number; title: string; line: number }[] = [];
+    lines.forEach((line, idx) => {
+        const m = /^(#{1,3})\s+(.*)$/.exec(line);
+        if (m) headings.push({ level: m[1].length, title: m[2].trim(), line: idx });
+    });
+    const toc = headings.map(h => ({ level: h.level, title: h.title }));
+    return { path: p, frontmatter: parsed.data ?? {}, lines, headings, toc, etag };
+}
+
 
 export default async function route(app: FastifyInstance) {
     // Auth guard (simple API key)
@@ -81,30 +117,32 @@ export default async function route(app: FastifyInstance) {
         }
     }, async (req, reply) => {
         const p = (req.params as any)['*'];
-        const abs = vaultResolve(p);
-        if (!isMarkdown(abs)) return reply.code(400).send({ error: 'Not a Markdown path' });
-        const buf = await fs.readFile(abs);
-        const etag = strongEtagFromBuffer(buf);
-        reply.header('ETag', etag);
-
-        const parsed = matter(buf.toString('utf8'));
-        const lines = parsed.content.split(/\r?\n/);
-        const headings: { level: number; title: string; line: number }[] = [];
-        lines.forEach((line, idx) => {
-            const m = /^(#{1,3})\s+(.*)$/.exec(line);
-            if (m) headings.push({ level: m[1].length, title: m[2].trim(), line: idx });
-        });
-        const toc = headings.map(h => ({ level: h.level, title: h.title }));
+        let note: ReadNoteResult;
+        try {
+            note = await readNote(p);
+        } catch (e: any) {
+            const msg = e?.message || 'Error';
+            if (msg === 'Invalid path' || msg === 'Not a Markdown path') {
+                return reply.code(400).send({ error: msg });
+            }
+            if (msg === 'Not found') {
+                return reply.code(404).send({ error: msg });
+            }
+            throw e;
+        }
+        reply.header('ETag', note.etag);
 
         const { section, range } = req.query as { section?: string; range?: string };
-        let contentLines = lines;
+        let contentLines = note.lines;
+        const headings = note.headings;
+        const toc = note.toc;
 
         if (section) {
             const idx = headings.findIndex(h => h.title === section);
             if (idx === -1) return reply.code(404).send({ error: 'Section not found', toc });
             const start = headings[idx].line + 1;
-            const end = idx + 1 < headings.length ? headings[idx + 1].line : lines.length;
-            contentLines = lines.slice(start, end);
+            const end = idx + 1 < headings.length ? headings[idx + 1].line : note.lines.length;
+            contentLines = note.lines.slice(start, end);
         }
 
         if (range) {
@@ -121,7 +159,27 @@ export default async function route(app: FastifyInstance) {
         let content = contentLines.join('\n');
         if (section && !range) content = content.trim();
 
-        return { path: p, frontmatter: parsed.data ?? {}, content, toc, etag };
+        return { path: p, frontmatter: note.frontmatter, content, toc, etag: note.etag };
+    });
+
+    app.post('/notes/batch', async (req, reply) => {
+        const body = req.body as any;
+        if (!body || !Array.isArray(body.paths) || !body.paths.every((p: any) => typeof p === 'string')) {
+            return reply.code(400).send({ error: 'Invalid paths' });
+        }
+        const notes: any[] = [];
+        const errors: Record<string, string> = {};
+        for (const p of body.paths) {
+            try {
+                const note = await readNote(p);
+                notes.push({ path: p, frontmatter: note.frontmatter, content: note.lines.join('\n'), toc: note.toc, etag: note.etag });
+            } catch (e: any) {
+                errors[p] = e?.message || 'Error';
+            }
+        }
+        const res: any = { notes };
+        if (Object.keys(errors).length) res.errors = errors;
+        return res;
     });
 
 
