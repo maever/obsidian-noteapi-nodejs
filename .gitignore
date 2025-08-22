@@ -4,6 +4,9 @@ dist/
 .nyc_output/
 coverage/
 meili_data/
+meilisearch
+data.ms/
+vault-*/
 
 # env
 .env
