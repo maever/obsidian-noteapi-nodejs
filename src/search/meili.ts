@@ -18,8 +18,25 @@ export async function ensureIndex() {
     try {
         const task = await meili.createIndex(CONFIG.meili.index, { primaryKey: 'path' });
         if ('taskUid' in task) await meili.tasks.waitForTask(task.taskUid);
+        log.info({ index: CONFIG.meili.index }, 'Created Meilisearch index');
+    } catch (err: any) {
+        if (err && err.code === 'index_already_exists') {
+            log.debug({ index: CONFIG.meili.index }, 'Meilisearch index already exists');
+        } else {
+            log.warn({ err }, 'Failed to create Meilisearch index');
+        }
+    }
+    try {
+        const info = await idx.getRawInfo();
+        if (!info.primaryKey) {
+            const task = await idx.update({ primaryKey: 'path' });
+            if ('taskUid' in task) await idx.tasks.waitForTask(task.taskUid);
+            log.info({ index: CONFIG.meili.index }, 'Set Meilisearch primary key to "path"');
+        } else {
+            log.info({ index: CONFIG.meili.index, primaryKey: info.primaryKey }, 'Meilisearch primary key already set');
+        }
     } catch (err) {
-        log.warn({ err }, 'Failed to create Meilisearch index');
+        log.warn({ err }, 'Failed to ensure Meilisearch primary key');
     }
     try {
         const task = await idx.updateSettings({
