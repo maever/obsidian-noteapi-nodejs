@@ -28,6 +28,7 @@ You are an assistant developer. Your job is to implement endpoints and utilities
 ## Test instructions
 
 - Do not use docker for tests
+- Set `MEILI_HOST=http://127.0.0.1:7700` in `.env` for local testing
 - Use the latest stable Meilisearch release (currently 1.18.0) if possible https://github.com/meilisearch/meilisearch/releases/tag/v1.18.0
 - Install Meilisearch before running tests:
   - `curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.18.0/meilisearch-linux-amd64 -o meilisearch`

@@ -9,7 +9,7 @@ services:
     volumes:
       - ./meili_data:/meili_data
     ports:
-      - "127.0.0.1:7700:7700"
+      - "7700:7700"
 
   noteapi:
     image: node:20-alpine
@@ -30,4 +30,4 @@ services:
     depends_on:
       - meili
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3000:3000"

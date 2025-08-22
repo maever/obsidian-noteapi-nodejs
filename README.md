@@ -35,7 +35,26 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 ## Limitations
 - ChatGPT's Actions integration is optimized for very light API use; requests that span more than about three files may exceed its current capabilities. This constraint stems from ChatGPT rather than the API itself.
 
-## Quick Start
-1. Rename `docker-compose.yml.example` to `docker-compose.yml`.
-2. Run `docker compose up -d` to launch the stack.
+## Running
 
+### Method 1: Docker Compose
+1. Copy `.env.example` to `.env` and set any required values (e.g. `NOTEAPI_KEY`). The default `MEILI_HOST` is `http://meili:7700`.
+2. Copy `docker-compose.yml.example` to `docker-compose.yml`.
+3. Start the stack:
+   ```sh
+   docker compose up -d
+   ```
+
+### Method 2: Local CLI
+1. Copy `.env.example` to `.env` and set `MEILI_HOST=http://127.0.0.1:7700`.
+2. Start Meilisearch:
+   ```sh
+   curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.18.0/meilisearch-linux-amd64 -o meilisearch
+   chmod +x meilisearch
+   ./meilisearch --master-key masterKey --no-analytics &
+   ```
+3. Install dependencies and run the server:
+   ```sh
+   npm ci
+   npm run dev
+   ```
