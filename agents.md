@@ -29,6 +29,10 @@ You are an assistant developer. Your job is to implement endpoints and utilities
 
 - Do not use docker for tests
 - Use the latest stable Meilisearch release (currently 1.18.0) if possible https://github.com/meilisearch/meilisearch/releases/tag/v1.18.0
+- Install Meilisearch before running tests:
+  - `curl -L https://github.com/meilisearch/meilisearch/releases/download/v1.18.0/meilisearch-linux-amd64 -o meilisearch`
+  - `chmod +x meilisearch`
+  - `./meilisearch --master-key masterKey --no-analytics &`
 
 ## Tests
 - Do not use Docker for tests 
