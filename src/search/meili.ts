@@ -1,6 +1,12 @@
 import { MeiliSearch } from 'meilisearch';
+import pino from 'pino';
 import { CONFIG } from '../config.js';
 import path from 'node:path';
+
+const log = pino({
+    level: process.env.DEBUG_MEILI ? 'debug' : process.env.LOG_LEVEL ?? 'info',
+    timestamp: pino.stdTimeFunctions.isoTime
+});
 
 export const meili = new MeiliSearch({ host: CONFIG.meili.host, apiKey: CONFIG.meili.key });
 
@@ -9,8 +15,8 @@ async function ensureIndex() {
     try {
         const task = await meili.createIndex(CONFIG.meili.index, { primaryKey: 'path' });
         if ('taskUid' in task) await meili.tasks.waitForTask(task.taskUid);
-    } catch {
-        // ignore index already exists or network errors
+    } catch (err) {
+        log.warn({ err }, 'Failed to create Meilisearch index');
     }
     try {
         const task = await idx.updateSettings({
@@ -19,13 +25,15 @@ async function ensureIndex() {
             filterableAttributes: ['path']
         });
         if ('taskUid' in task) await idx.tasks.waitForTask(task.taskUid);
-    } catch {
-        // ignore unsupported settings
+    } catch (err) {
+        log.warn({ err }, 'Failed to update Meilisearch index settings');
     }
     try {
         await meili.health();
+        log.info({ host: CONFIG.meili.host }, 'Meilisearch healthy');
         return idx;
-    } catch {
+    } catch (err) {
+        log.error({ err }, 'Meilisearch health check failed');
         return undefined;
     }
 }
