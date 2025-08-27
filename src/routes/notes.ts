@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import fssync from 'node:fs';
 import path from 'node:path';
 import { vaultResolve, isMarkdown, ensureParentDir } from '../utils/paths.js';
+import { applyOwnership } from '../utils/ownership.js';
 import { CONFIG } from '../config.js';
 import matter from 'gray-matter';
 import { strongEtagFromBuffer } from '../utils/etag.js';
@@ -18,6 +19,7 @@ async function writeNoteAtomic(absPath: string, buffer: Buffer) {
         await handle.close();
     }
     await fs.rename(tmp, absPath);
+    await applyOwnership(absPath);
 }
 
 async function listNotes(rel: string): Promise<string[]> {

@@ -7,6 +7,8 @@ export const CONFIG = {
   vaultRoot: process.env.VAULT_ROOT ?? '/vault',
   apiKey: process.env.NOTEAPI_KEY ?? '',
   trashEnabled: process.env.TRASH_ENABLED === 'true',
+  fileUid: process.env.FILE_UID ? Number(process.env.FILE_UID) : undefined,
+  fileGid: process.env.FILE_GID ? Number(process.env.FILE_GID) : undefined,
   meili: {
     host: process.env.MEILI_HOST ?? 'http://127.0.0.1:7700',
     key: process.env.MEILI_MASTER_KEY ?? '',

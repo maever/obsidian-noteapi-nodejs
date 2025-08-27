@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { CONFIG } from '../config.js';
+import { applyOwnership } from './ownership.js';
 
 const REAL_VAULT_ROOT = fs.existsSync(CONFIG.vaultRoot)
     ? fs.realpathSync(CONFIG.vaultRoot)
@@ -35,5 +36,7 @@ export function vaultResolve(rel: string): string {
 }
 
 export async function ensureParentDir(absPath: string): Promise<void> {
-  await fsp.mkdir(path.dirname(absPath), { recursive: true });
+  const dir = path.dirname(absPath);
+  await fsp.mkdir(dir, { recursive: true });
+  await applyOwnership(dir);
 }
