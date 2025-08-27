@@ -27,7 +27,10 @@ services:
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
       - MEILI_INDEX=notes
       - BASE_URL=${BASE_URL}
+      - FILE_UID=${FILE_UID}
+      - FILE_GID=${FILE_GID}
     depends_on:
       - meili
     ports:
       - "3000:3000"
+    user: "${FILE_UID}:${FILE_GID}"

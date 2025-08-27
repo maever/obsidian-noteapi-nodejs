@@ -37,6 +37,10 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 
 ## Running
 
+Set optional `FILE_UID`/`FILE_GID` in your environment to chown new files and
+directories. When using Docker Compose, you can also run the service as that
+user via `user: "${FILE_UID}:${FILE_GID}"`.
+
 ### Method 1: Docker Compose
 1. Copy `.env.example` to `.env` and set any required values (e.g. `NOTEAPI_KEY`). The default `MEILI_HOST` is `http://meili:7700`.
 2. Copy `docker-compose.yml.example` to `docker-compose.yml`.
