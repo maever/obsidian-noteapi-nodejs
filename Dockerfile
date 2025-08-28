@@ -14,4 +14,5 @@ ENV NODE_ENV=production
 COPY --from=build /app/package*.json ./
 RUN npm ci --omit=dev        # install only prod deps
 COPY --from=build /app/dist dist/
+COPY --from=build /app/openapi openapi/
 CMD ["node", "dist/server.js"]
