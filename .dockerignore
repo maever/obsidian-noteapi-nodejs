@@ -1,0 +1,29 @@
+# Dependency directories
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.*
+
+# Build artifacts
+dist
+build
+coverage
+meili_data
+*.tsbuildinfo
+
+# Tests and sample data
+test
+scripts
+
+# Docker & repo-specific files
+docker-compose.yml
+docker-compose.yml.example
+.git
+.gitignore
+
+# Miscellaneous
+*.log
+.DS_Store
