@@ -5,7 +5,8 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 ## What do I need
 - A little bit of technical knowledge (how to start up a Docker Compose container.)
 - An Obsidian or other markdown note's vault that you've synced to server / vps (using syncthing for example).
-- A (sub)domain is highly recommended, either your own domain or a DDNS service (e.g. No-IP, DuckDNS, Dynu or FreeDNS)
+- A (sub)domain, either your own domain or a DDNS service (e.g. No-IP, DuckDNS, Dynu or FreeDNS)
+- A SSL Proxy (Nginx proxy manager or Cloudflare if you have your own domain)
 - Follow the instructions below in the Running section for next steps
 
 ## Features
@@ -26,16 +27,12 @@ API Commands:
 - Full‑text search (using Meilisearch)
 - Section/outline reads to keep LLM context small (Line range reads via `?range=start-end`)
 
-Bonus features for personal use case:
-- Works behind Nginx Proxy Manager (NPM)
-
 ## Roadmap / Todos
 - Code cleanup
 - Improved rich text support 
 - Chunked API responses limited to 100KB
 - Configurable api limits
-- True SSL Support (for now SSL support is realized using a proxy or CDN, e.g. Nginx Proxy Manager or Cloudflare)
-
+- Improved SSL Support (for now SSL support is realized using a proxy or CDN, e.g. Nginx Proxy Manager or Cloudflare), I aim to install my own solution.
 
 ## Requirements
 - Recommended Unix environment (will run on windows too though through Docker)
@@ -68,7 +65,7 @@ If an API call fails / errors, follow instructions listed below:
 - ChatGPT's API "Actions" currently will only accept API responses around 100kb, so very large single notes (/note) or large directory structures (/folders) could be an issue ( Note vaults with over ~1000 folders will likely exceed the limit, ideally avoid more than 5 layers directory of recursion)
 - ChatGPT will try hard to minimize the amount of API requests, so it will on occassion ignore instructions and not refetch notes generating ETAG conflicts as a result. In this case it will often suggest to refetch the note itself though.
 - ChatGPT has instructions to shy away from anything that looks like bulk tasks, in order to get it to do bulk work use agent mode.
-- There is technically a limit of 300 requests per minute on the default the (nodejs) fastify package.
+- There is technically a limit of 300 requests per minute on the default the (nodejs) fastify package. ChatGPT won't reach this. (for your own scripts monitor the ratelimit-remaining header)
 
 ## Running
 
