@@ -21,6 +21,7 @@ import { searchEnabled, ensureIndex } from './search/meili.js';
 const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
 );
+openapi.servers = [{ url: CONFIG.baseUrl }];
 
 const app = Fastify({
     logger: { timestamp: pino.stdTimeFunctions.isoTime },
