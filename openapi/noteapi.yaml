@@ -3,7 +3,7 @@ info:
   title: NoteAPI
   version: 0.1.0
 servers:
-  - url: https://noteapi.gould.pro
+  - url: ${BASE_URL}
 security:
   - bearerAuth: []
 components:
