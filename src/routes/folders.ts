@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { CONFIG } from '../config.js';
+import { applyOwnership } from '../utils/ownership.js';
 
 
 async function listDirs(dir: string, base = ''): Promise<string[]> {
@@ -38,6 +39,7 @@ export default async function route(app: FastifyInstance) {
         const { path: rel } = req.body as any;
         const abs = path.join(CONFIG.vaultRoot, rel);
         await fs.mkdir(abs, { recursive: true });
+        await applyOwnership(abs);
         reply.code(201).send({ ok: true });
     });
 }
