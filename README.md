@@ -81,7 +81,7 @@ Set optional `FILE_UID`/`FILE_GID` in your environment to chown new files and di
    ```sh
    docker compose up -d
    ```
-   
+4. Configure your (nginx) proxy, setup SSL ('Let's Encrypt' will do) and point it to port 3000 locally.
 
 ### Method 2: Local CLI
 1. Copy `.env.example` to `.env` and set `MEILI_HOST=http://127.0.0.1:7700`.  For MEILI_MASTER_KEY just either enter a 16+ character long text string or leave it as is, it will generate a key for you upon first boot. For BASE_URL, enter your (sub)domain url here. 
@@ -96,3 +96,4 @@ Set optional `FILE_UID`/`FILE_GID` in your environment to chown new files and di
    npm ci
    npm run dev
    ```
+4. Configure your (nginx) proxy, setup SSL ('Let's Encrypt' will do) and point it to port 3000 locally.
