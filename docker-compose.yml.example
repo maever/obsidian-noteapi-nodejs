@@ -30,6 +30,7 @@ services:
       - FILE_UID=${FILE_UID}
       - FILE_GID=${FILE_GID}
       - FILE_UMASK=${FILE_UMASK}
+
     depends_on:
       - meili
     ports:

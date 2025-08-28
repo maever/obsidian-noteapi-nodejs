@@ -37,10 +37,8 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 
 ## Running
 
-Set optional `FILE_UID`/`FILE_GID` in your environment to chown new files and
-directories. `FILE_UMASK` controls the process umask (octal, default `000` for
-`666`/`777` modes). When using Docker Compose, you can also run the service as
-that user via `user: "${FILE_UID}:${FILE_GID}"`.
+Set optional `FILE_UID`/`FILE_GID` in your environment to chown new files and directories. `FILE_UMASK` controls the process umask (octal, default `000` for `666`/`777` modes). When using Docker Compose, you can also run the service as that user via `user: "${FILE_UID}:${FILE_GID}"`.
+
 
 ### Method 1: Docker Compose
 1. Copy `.env.example` to `.env` and set any required values (e.g. `NOTEAPI_KEY`). The default `MEILI_HOST` is `http://meili:7700`.
