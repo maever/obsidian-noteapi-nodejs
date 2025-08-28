@@ -5,6 +5,7 @@ A small, typed HTTP service that gives a Custom GPT safe, full access to an Obsi
 ## What do I need
 - A little bit of technical knowledge (how to start up a Docker Compose container.)
 - An Obsidian or other markdown note's vault that you've synced to server / vps (using syncthing for example).
+- A ChatGPT subscription that allows you to create custom GPTs and connect them to action (ChatGPT Plus and higher will work as of now).
 - A (sub)domain, either your own domain or a DDNS service (e.g. No-IP, DuckDNS, Dynu or FreeDNS)
 - A SSL Proxy (Nginx proxy manager or Cloudflare if you have your own domain)
 - Follow the instructions below in the Running section for next steps
