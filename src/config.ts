@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 
-const fileUmask = process.env.FILE_UMASK ? Number.parseInt(process.env.FILE_UMASK, 8) : 0;
+const fileUmaskEnv = process.env.FILE_UMASK;
+const fileUmask = fileUmaskEnv ? Number.parseInt(fileUmaskEnv, 8) : 0;
 process.umask(fileUmask);
+console.log(`[INFO] FILE_UMASK=${fileUmaskEnv ?? 'undefined'} (process umask ${fileUmask.toString(8).padStart(3, '0')})`);
 
 export const CONFIG = {
   host: process.env.HOST ?? '127.0.0.1',
