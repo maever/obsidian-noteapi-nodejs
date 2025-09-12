@@ -20,6 +20,10 @@ async function writeNoteAtomic(absPath: string, buffer: Buffer) {
     }
     await fs.rename(tmp, absPath);
     await applyOwnership(absPath);
+    const stats = await fs.stat(absPath);
+    console.log(
+        `[INFO] wrote ${absPath} mode ${(stats.mode & 0o777).toString(8)} (umask ${CONFIG.fileUmask.toString(8).padStart(3, '0')})`
+    );
 }
 
 async function listNotes(rel: string): Promise<string[]> {
