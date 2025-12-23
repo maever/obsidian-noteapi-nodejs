@@ -3,6 +3,7 @@ version: "3.9"
 services:
   meili:
     image: getmeili/meilisearch:v1.18
+    command: ["meilisearch", "--max-indexing-memory", "1GiB"]
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
