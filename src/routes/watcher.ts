@@ -15,6 +15,9 @@ const LOG_BATCH_THRESHOLD = Number(process.env.WATCHER_LOG_BATCH_THRESHOLD ?? 5)
 const LOG_RATE_LIMIT_MS = 30000;
 const TOP_PATHS_LIMIT = 5;
 const MAX_IGNORED_SAMPLES = 10;
+const WATCHER_VERBOSE = /^true$/i.test(process.env.WATCHER_VERBOSE ?? '');
+
+type PathLogReason = 'add' | 'change' | 'unlink' | 'ignored' | 'queued' | 'dropped';
 
 type PendingAction = { action: 'upsert' | 'delete'; absPath: string };
 
@@ -76,6 +79,11 @@ function toRelPath(absPath: string) {
     return path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
 }
 
+function logPathEvent(reason: PathLogReason, absPath: string, extra?: Record<string, unknown>) {
+    if (!WATCHER_VERBOSE) return;
+    logBoth('info', 'Watcher path event', { reason, path: toRelPath(absPath), ...extra });
+}
+
 function recordIgnored(absPath: string) {
     summaryCounters.ignoredPaths += 1;
     if (ignoredSamples.size < MAX_IGNORED_SAMPLES) {
@@ -93,14 +101,28 @@ function enqueueAction(action: PendingAction['action'], absPath: string) {
     incrementEventCount(absPath);
 }
 
-function handleAddOrChange(absPath: string) {
-    if (!isMarkdown(absPath) || absPath.includes('sync-conflict')) return;
+function handleAddOrChange(absPath: string, event: 'add' | 'change') {
+    logPathEvent(event, absPath);
+    if (!isMarkdown(absPath)) {
+        logPathEvent('dropped', absPath, { event, cause: 'non-markdown' });
+        return;
+    }
+    if (absPath.includes('sync-conflict')) {
+        logPathEvent('dropped', absPath, { event, cause: 'sync-conflict' });
+        return;
+    }
     enqueueAction('upsert', absPath);
+    logPathEvent('queued', absPath, { event });
 }
 
 function handleUnlink(absPath: string) {
-    if (!isMarkdown(absPath)) return;
+    logPathEvent('unlink', absPath);
+    if (!isMarkdown(absPath)) {
+        logPathEvent('dropped', absPath, { event: 'unlink', cause: 'non-markdown' });
+        return;
+    }
     enqueueAction('delete', absPath);
+    logPathEvent('queued', absPath, { event: 'unlink' });
 }
 
 function topPaths(counts: Map<string, number>) {
@@ -212,13 +234,16 @@ export function startWatcher(): FSWatcher {
         ignored: (p: string) => {
             const base = path.basename(p);
             const ignored = shouldIgnore(base);
-            if (ignored) recordIgnored(p);
+            if (ignored) {
+                recordIgnored(p);
+                logPathEvent('ignored', p, { reason: 'pattern', base });
+            }
             return ignored;
         }
     });
 
-    watcher.on('add', handleAddOrChange);
-    watcher.on('change', handleAddOrChange);
+    watcher.on('add', (p) => handleAddOrChange(p, 'add'));
+    watcher.on('change', (p) => handleAddOrChange(p, 'change'));
     watcher.on('unlink', handleUnlink);
 
     const flushTimer = setInterval(() => {

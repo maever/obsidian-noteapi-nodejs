@@ -98,3 +98,6 @@ Set optional `FILE_UID`/`FILE_GID` in your environment to chown new files and di
    npm run dev
    ```
 4. Configure your (nginx) proxy, setup SSL ('Let's Encrypt' will do) and point it to port 3000 locally.
+
+### Operational tips
+- Set `WATCHER_VERBOSE=true` to log every watcher event with the relative path and reason (add/change/unlink, ignored, queued, dropped). Useful for incident investigations; leave disabled for normal operation.
