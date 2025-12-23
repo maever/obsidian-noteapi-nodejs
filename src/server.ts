@@ -4,6 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import fs from 'node:fs';
 import { parse } from 'yaml';
 import pino from 'pino';
+import packageJson from '../package.json' assert { type: 'json' };
 import { CONFIG } from './config.js';
 
 // Routes
@@ -22,6 +23,9 @@ const openapi = parse(
     fs.readFileSync(new URL('../openapi/noteapi.yaml', import.meta.url), 'utf8')
 );
 openapi.servers = [{ url: CONFIG.baseUrl }];
+
+const appVersion = packageJson.version;
+const verboseLoggingEnabled = Boolean(process.env.DEBUG_MEILI || process.env.VERBOSE_LOGGING);
 
 const app = Fastify({
     logger: { timestamp: pino.stdTimeFunctions.isoTime },
@@ -89,7 +93,11 @@ if (!searchEnabled) {
 
 app.listen({ host: CONFIG.host, port: CONFIG.port })
     .then(() => {
-        app.log.info(`NoteAPI listening on http://${CONFIG.host}:${CONFIG.port}`);
+        app.log.info(`NoteAPI listening on http://${CONFIG.host}:${CONFIG.port} (version ${appVersion})`);
+        app.log.info(searchEnabled ? 'Meilisearch enabled' : 'Meilisearch disabled');
+        if (verboseLoggingEnabled) {
+            app.log.info('Verbose logging enabled');
+        }
     })
     .catch((err) => {
         app.log.error(err);
