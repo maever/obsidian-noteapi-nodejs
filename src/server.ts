@@ -44,9 +44,13 @@ await app.register(graph);
 await app.register(exporter);
 
 try {
-    const count = await reindexAll();
+    const result = await reindexAll();
     if (searchEnabled) {
-        app.log.info(`Indexed ${count} notes`);
+        if (result.skipped) {
+            app.log.warn({ reason: result.reason }, 'Skipped indexing');
+        } else {
+            app.log.info(`Indexed ${result.indexed} notes`);
+        }
     } else {
         app.log.warn('Search index unavailable; skipping indexing');
     }
@@ -65,9 +69,13 @@ if (!searchEnabled) {
         if (idx) {
             clearInterval(timer);
             try {
-                const count = await reindexAll();
+                const result = await reindexAll();
                 if (searchEnabled) {
-                    app.log.info(`Indexed ${count} notes`);
+                    if (result.skipped) {
+                        app.log.warn({ reason: result.reason }, 'Skipped indexing');
+                    } else {
+                        app.log.info(`Indexed ${result.indexed} notes`);
+                    }
                 } else {
                     app.log.warn('Search index unavailable; skipping indexing');
                 }
@@ -87,4 +95,3 @@ app.listen({ host: CONFIG.host, port: CONFIG.port })
         app.log.error(err);
         process.exit(1);
     });
-

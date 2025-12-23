@@ -8,6 +8,16 @@ import pino from 'pino';
 
 const log = pino({ level: process.env.LOG_LEVEL ?? 'info', timestamp: pino.stdTimeFunctions.isoTime });
 
+type ReindexSkipReason = 'in-flight' | 'disabled';
+
+export interface ReindexResult {
+    indexed: number;
+    skipped: boolean;
+    reason?: ReindexSkipReason;
+}
+
+let reindexInFlight = false;
+
 async function walk(dir: string): Promise<string[]> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     const files: string[] = [];
@@ -27,9 +37,19 @@ async function walk(dir: string): Promise<string[]> {
     return files;
 }
 
-export async function reindexAll(): Promise<number> {
-    if (!searchEnabled || !index) return 0;
+export async function reindexAll(): Promise<ReindexResult> {
+    if (!searchEnabled || !index) {
+        log.warn('Reindex requested but search is disabled');
+        return { indexed: 0, skipped: true, reason: 'disabled' };
+    }
+    if (reindexInFlight) {
+        log.warn('Reindex request skipped: already running');
+        return { indexed: 0, skipped: true, reason: 'in-flight' };
+    }
+
     const idx = index;
+    reindexInFlight = true;
+    log.info('Reindex invoked');
     try {
         const absPaths = await walk(CONFIG.vaultRoot);
         const docs: any[] = [];
@@ -40,7 +60,10 @@ export async function reindexAll(): Promise<number> {
             const stat = await fs.stat(abs);
             docs.push(toSearchDoc({ path: rel, frontmatter: parsed.data ?? {}, content: parsed.content, mtime: stat.mtimeMs }));
         }
-        if (!docs.length) return 0;
+        if (!docs.length) {
+            log.info('Reindex completed with no documents found');
+            return { indexed: 0, skipped: false };
+        }
 
         const CHUNK_SIZE = 200;
         for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
@@ -50,15 +73,18 @@ export async function reindexAll(): Promise<number> {
                 const res = await idx.tasks.waitForTask(task.taskUid);
                 if (res.status !== 'succeeded') {
                     log.error({ task: res }, 'Failed to index documents');
-                    return 0;
+                    return { indexed: 0, skipped: false };
                 }
             }
         }
-        return docs.length;
+        log.info({ count: docs.length }, 'Reindex completed');
+        return { indexed: docs.length, skipped: false };
     } catch (err: any) {
         log.error({ err }, 'Error during reindex');
-        if (err?.code === 'ENOENT') return 0;
-        if (err?.type === 'MeiliSearchRequestError') return 0;
+        if (err?.code === 'ENOENT') return { indexed: 0, skipped: false };
+        if (err?.type === 'MeiliSearchRequestError') return { indexed: 0, skipped: false };
         throw err;
+    } finally {
+        reindexInFlight = false;
     }
 }

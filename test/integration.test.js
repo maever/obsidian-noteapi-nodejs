@@ -184,7 +184,20 @@ test('endpoints integration', async () => {
         // Admin reindex
         const admin = await app.inject({ method: 'POST', url: '/admin/reindex', headers: auth });
         assert.equal(admin.statusCode, 200);
+        assert.equal(admin.json().skipped, false);
         assert(admin.json().indexed > 0);
+
+        // Admin reindex concurrent should back off
+        const firstRun = app.inject({ method: 'POST', url: '/admin/reindex', headers: auth });
+        const secondRun = app.inject({ method: 'POST', url: '/admin/reindex', headers: auth });
+        const [first, second] = await Promise.all([firstRun, secondRun]);
+        const success = first.statusCode === 200 ? first : second;
+        const skipped = first.statusCode === 200 ? second : first;
+        assert.equal(success.statusCode, 200);
+        assert.equal(success.json().skipped, false);
+        assert.equal(skipped.statusCode, 409);
+        assert.equal(skipped.json().skipped, true);
+        assert.equal(skipped.json().reason, 'in-flight');
 
         // Search after reindex
         let postReindex;
