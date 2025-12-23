@@ -1,10 +1,43 @@
 import chokidar, { FSWatcher } from 'chokidar';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import pino from 'pino';
 import matter from 'gray-matter';
 import { CONFIG } from '../config.js';
 import { index, toSearchDoc, encodePath, searchEnabled } from '../search/meili.js';
 import { isMarkdown } from '../utils/paths.js';
+
+const log = pino({ level: process.env.LOG_LEVEL ?? 'info', timestamp: pino.stdTimeFunctions.isoTime });
+
+const FLUSH_INTERVAL_MS = 2000;
+const SUMMARY_INTERVAL_MS = 60000;
+const LOG_BATCH_THRESHOLD = Number(process.env.WATCHER_LOG_BATCH_THRESHOLD ?? 5);
+const LOG_RATE_LIMIT_MS = 30000;
+const TOP_PATHS_LIMIT = 5;
+const MAX_IGNORED_SAMPLES = 10;
+
+type PendingAction = { action: 'upsert' | 'delete'; absPath: string };
+
+const pendingActions = new Map<string, PendingAction>();
+const pendingEventCounts = new Map<string, number>();
+const summaryCounters = { eventsReceived: 0, documentsSent: 0, ignoredPaths: 0 };
+const ignoredSamples = new Set<string>();
+let lastFlushLogTime = 0;
+
+function logBoth(
+    level: 'info' | 'warn' | 'error',
+    msg: string,
+    data?: Record<string, unknown>
+) {
+    const consoleFn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    if (data) {
+        log[level](data, msg);
+        consoleFn(`${msg} ${JSON.stringify(data)}`);
+    } else {
+        log[level](msg);
+        consoleFn(msg);
+    }
+}
 
 // Syncthing metadata and editor temp files pollute the search index, so skip them explicitly.
 const IGNORED_PATTERNS = [
@@ -39,48 +72,170 @@ function shouldIgnore(base: string): boolean {
     return false;
 }
 
-async function handleAddOrChange(absPath: string) {
-    if (!searchEnabled || !index) return;
-    if (!isMarkdown(absPath) || absPath.includes('sync-conflict')) return;
-    try {
-        const rel = path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
-        const buf = await fs.readFile(absPath, 'utf8');
-        const parsed = matter(buf);
-        const stat = await fs.stat(absPath);
-        await index.addDocuments([
-            toSearchDoc({ path: rel, frontmatter: parsed.data ?? {}, content: parsed.content, mtime: stat.mtimeMs })
-        ]);
-    } catch (err) {
-        console.error('watcher add/change error', err);
+function toRelPath(absPath: string) {
+    return path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
+}
+
+function recordIgnored(absPath: string) {
+    summaryCounters.ignoredPaths += 1;
+    if (ignoredSamples.size < MAX_IGNORED_SAMPLES) {
+        ignoredSamples.add(toRelPath(absPath));
     }
 }
 
-async function handleUnlink(absPath: string) {
-    if (!searchEnabled || !index) return;
+function incrementEventCount(absPath: string) {
+    pendingEventCounts.set(absPath, (pendingEventCounts.get(absPath) ?? 0) + 1);
+}
+
+function enqueueAction(action: PendingAction['action'], absPath: string) {
+    summaryCounters.eventsReceived += 1;
+    pendingActions.set(absPath, { action, absPath });
+    incrementEventCount(absPath);
+}
+
+function handleAddOrChange(absPath: string) {
+    if (!isMarkdown(absPath) || absPath.includes('sync-conflict')) return;
+    enqueueAction('upsert', absPath);
+}
+
+function handleUnlink(absPath: string) {
     if (!isMarkdown(absPath)) return;
-    try {
-        const rel = path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
-        await index.deleteDocument(encodePath(rel));
-    } catch (err) {
-        console.error('watcher unlink error', err);
+    enqueueAction('delete', absPath);
+}
+
+function topPaths(counts: Map<string, number>) {
+    return Array.from(counts.entries())
+        .map(([absPath, count]) => ({ path: toRelPath(absPath), count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, TOP_PATHS_LIMIT);
+}
+
+async function flushBatch() {
+    if (!searchEnabled || !index) return;
+    if (pendingActions.size === 0) return;
+
+    const batch = Array.from(pendingActions.values());
+    const batchCounts = new Map(pendingEventCounts);
+    pendingActions.clear();
+    pendingEventCounts.clear();
+
+    const batchSize = batch.length;
+    const pathsForLog = topPaths(batchCounts);
+    const logThisFlush = batchSize >= LOG_BATCH_THRESHOLD || Date.now() - lastFlushLogTime >= LOG_RATE_LIMIT_MS;
+
+    if (logThisFlush) {
+        logBoth('info', 'Watcher flush start', { batchSize, topPaths: pathsForLog });
+        lastFlushLogTime = Date.now();
     }
+
+    const upsertDocs = [];
+    const deleteIds: string[] = [];
+
+    for (const entry of batch) {
+        const rel = toRelPath(entry.absPath);
+        if (entry.action === 'upsert') {
+            try {
+                const buf = await fs.readFile(entry.absPath, 'utf8');
+                const parsed = matter(buf);
+                const stat = await fs.stat(entry.absPath);
+                upsertDocs.push(
+                    toSearchDoc({
+                        path: rel,
+                        frontmatter: parsed.data ?? {},
+                        content: parsed.content,
+                        mtime: stat.mtimeMs
+                    })
+                );
+            } catch (err) {
+                logBoth('error', 'Watcher failed to prepare document for indexing', { err, path: rel });
+            }
+        } else {
+            deleteIds.push(encodePath(rel));
+        }
+    }
+
+    let documentsSent = 0;
+
+    if (upsertDocs.length > 0) {
+        try {
+            await index.addDocuments(upsertDocs);
+            documentsSent += upsertDocs.length;
+        } catch (err) {
+            logBoth('error', 'Watcher failed to index documents', { err, count: upsertDocs.length });
+        }
+    }
+
+    if (deleteIds.length > 0) {
+        try {
+            await index.deleteDocuments(deleteIds);
+            documentsSent += deleteIds.length;
+        } catch (err) {
+            logBoth('error', 'Watcher failed to delete documents', { err, count: deleteIds.length });
+        }
+    }
+
+    summaryCounters.documentsSent += documentsSent;
+
+    if (logThisFlush) {
+        logBoth('info', 'Watcher flush complete', {
+            batchSize,
+            documentsSent,
+            remainingQueue: pendingActions.size,
+            topPaths: pathsForLog
+        });
+    }
+}
+
+function logSummary() {
+    if (!searchEnabled) return;
+    const summary = {
+        eventsReceived: summaryCounters.eventsReceived,
+        documentsSent: summaryCounters.documentsSent,
+        ignoredPaths: summaryCounters.ignoredPaths,
+        queued: pendingActions.size,
+        ignoredSamples: Array.from(ignoredSamples)
+    };
+    logBoth('info', 'Watcher minute summary', summary);
+    summaryCounters.eventsReceived = 0;
+    summaryCounters.documentsSent = 0;
+    summaryCounters.ignoredPaths = 0;
+    ignoredSamples.clear();
 }
 
 export function startWatcher(): FSWatcher {
     if (!searchEnabled || !index) {
         return { close: async () => {} } as unknown as FSWatcher;
     }
-    console.log(`watcher ignoring patterns: ${IGNORED_PATTERNS.join(', ')}`);
+    logBoth('info', 'Watcher ignoring patterns', { patterns: IGNORED_PATTERNS });
     const watcher = chokidar.watch(CONFIG.vaultRoot, {
         ignoreInitial: true,
         ignored: (p: string) => {
             const base = path.basename(p);
-            return shouldIgnore(base);
+            const ignored = shouldIgnore(base);
+            if (ignored) recordIgnored(p);
+            return ignored;
         }
     });
 
     watcher.on('add', handleAddOrChange);
     watcher.on('change', handleAddOrChange);
     watcher.on('unlink', handleUnlink);
+
+    const flushTimer = setInterval(() => {
+        void flushBatch();
+    }, FLUSH_INTERVAL_MS);
+    const summaryTimer = setInterval(logSummary, SUMMARY_INTERVAL_MS);
+
+    const originalClose = watcher.close.bind(watcher);
+    watcher.close = async () => {
+        clearInterval(flushTimer);
+        clearInterval(summaryTimer);
+        await flushBatch();
+        pendingActions.clear();
+        pendingEventCounts.clear();
+        ignoredSamples.clear();
+        await originalClose();
+    };
+
     return watcher;
 }
