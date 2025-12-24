@@ -1,4 +1,5 @@
 import chokidar, { FSWatcher } from 'chokidar';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import pino from 'pino';
@@ -25,6 +26,7 @@ const pendingActions = new Map<string, PendingAction>();
 const pendingEventCounts = new Map<string, number>();
 const summaryCounters = { eventsReceived: 0, documentsSent: 0, ignoredPaths: 0 };
 const ignoredSamples = new Set<string>();
+const lastIndexedHashes = new Map<string, string>();
 let lastFlushLogTime = 0;
 
 function logBoth(
@@ -77,6 +79,10 @@ function shouldIgnore(base: string): boolean {
 
 function toRelPath(absPath: string) {
     return path.relative(CONFIG.vaultRoot, absPath).split(path.sep).join('/');
+}
+
+function hashContent(content: string): string {
+    return crypto.createHash('sha256').update(content).digest('hex');
 }
 
 function logPathEvent(reason: PathLogReason, absPath: string, extra?: Record<string, unknown>) {
@@ -151,6 +157,7 @@ async function flushBatch() {
     }
 
     const upsertDocs = [];
+    const upsertHashes: Array<{ absPath: string; hash: string }> = [];
     const deleteIds: string[] = [];
 
     for (const entry of batch) {
@@ -158,6 +165,12 @@ async function flushBatch() {
         if (entry.action === 'upsert') {
             try {
                 const buf = await fs.readFile(entry.absPath, 'utf8');
+                const currentHash = hashContent(buf);
+                const previousHash = lastIndexedHashes.get(entry.absPath);
+                if (previousHash === currentHash) {
+                    logPathEvent('dropped', entry.absPath, { event: 'change', cause: 'no-content-change' });
+                    continue;
+                }
                 const parsed = matter(buf);
                 const stat = await fs.stat(entry.absPath);
                 upsertDocs.push(
@@ -168,6 +181,7 @@ async function flushBatch() {
                         mtime: stat.mtimeMs
                     })
                 );
+                upsertHashes.push({ absPath: entry.absPath, hash: currentHash });
             } catch (err) {
                 logBoth('error', 'Watcher failed to prepare document for indexing', { err, path: rel });
             }
@@ -182,6 +196,9 @@ async function flushBatch() {
         try {
             await index.addDocuments(upsertDocs);
             documentsSent += upsertDocs.length;
+            for (const entry of upsertHashes) {
+                lastIndexedHashes.set(entry.absPath, entry.hash);
+            }
         } catch (err) {
             logBoth('error', 'Watcher failed to index documents', { err, count: upsertDocs.length });
         }
@@ -191,6 +208,11 @@ async function flushBatch() {
         try {
             await index.deleteDocuments(deleteIds);
             documentsSent += deleteIds.length;
+            for (const entry of batch) {
+                if (entry.action === 'delete') {
+                    lastIndexedHashes.delete(entry.absPath);
+                }
+            }
         } catch (err) {
             logBoth('error', 'Watcher failed to delete documents', { err, count: deleteIds.length });
         }
@@ -259,6 +281,7 @@ export function startWatcher(): FSWatcher {
         pendingActions.clear();
         pendingEventCounts.clear();
         ignoredSamples.clear();
+        lastIndexedHashes.clear();
         await originalClose();
     };
 
