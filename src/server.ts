@@ -4,7 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import fs from 'node:fs';
 import { parse } from 'yaml';
 import pino from 'pino';
-import packageJson from '../package.json' assert { type: 'json' };
+import packageJson from '../package.json' with { type: 'json' };
 import { CONFIG } from './config.js';
 
 // Routes
